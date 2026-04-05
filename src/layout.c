@@ -11,6 +11,12 @@ int ntiled = 0;
 
 int border_width = 4;
 
+typedef struct{
+    int width;
+    int height;
+    int x;
+    int y;
+}Rect;
 
 void moveresize_window(WM *wm, Client *c, unsigned int width, unsigned int height, int x, int y);
 
@@ -37,6 +43,46 @@ void tile(WM *wm){
     wm->layouts[wm->active_layout].tile(wm);
 }
 
+void split_horizontal(Rect area, float factor, Rect *a, Rect *b){
+    int split = area.height * factor;
+
+    *a = (Rect){area.width, split, area.x, area.y};
+    *b = (Rect){area.width, area.height - split, area.x, area.y + split};
+}
+
+void split_vertical(Rect area, float factor, Rect *a, Rect *b){
+    int split = area.width * factor;
+
+    *a = (Rect){split, area.height, area.x, area.y};
+    *b = (Rect){area.width - split, area.height, area.x + split, area.y};
+}
+
+void stack_rects(MasterPosition master_pos, Rect area, int nrects, Rect *stack){
+    for(int i = 0; i < nrects; i++){
+        if(master_pos == MASTER_RIGHT || master_pos == MASTER_LEFT){
+            int h = area.height / nrects;
+
+            stack[i] = (Rect){
+                area.width,
+                (i == nrects-1) ? area.height - i * h : h,
+                area.x,
+                area.y + i * h
+            };
+        }
+        else{
+            int w = area.width / nrects;
+
+            stack[i] = (Rect){
+                (i == nrects-1) ? area.width - i * w : w,
+                area.height,
+                area.x + i * w,
+                area.y
+            };
+ 
+        }
+    }
+}
+
 void horizontal_tile(WM *wm){
     int i = 0;
     for(Client *c = wm->clients; c; c = c->next){
@@ -52,77 +98,52 @@ void horizontal_tile(WM *wm){
 }
 
 void master_tile(WM *wm){
-    if(ntiled == 0 || !wm->master) return;
+    if(ntiled == 0 || nmaster == 0) return;
 
-    if(ntiled <= nmaster){
+    int nstack = ntiled - nmaster;
+    if(nstack <= 0){
         moveresize_window(wm, wm->master, wm->usable_width, wm->usable_height, wm->usable_x, wm->usable_y);
         return;
     }
 
-    int mw, mh, mx, my;
-    int ww, wh, wx, wy;
+    Rect root = {wm->usable_width, wm->usable_height, wm->usable_x, wm->usable_y};
+
+    Rect master_area, stack_area;
 
     switch(master_pos){
-        case MASTER_TOP:
-            mw = wm->usable_width;
-            mh = wm->usable_height * mfactor;
-            mx = 0;
-            my = 0;
-
-            ww = wm->usable_width / (ntiled - nmaster);
-            wh = wm->usable_height - mh;
-            wx = 0;
-            wy = mh;
+        case MASTER_LEFT:
+            split_vertical(root, mfactor, &master_area, &stack_area);
             break;
 
         case MASTER_RIGHT:
-            mw = wm->usable_width * mfactor;
-            mh = wm->usable_height;
-            mx = wm->usable_width - mw;
-            my = 0;
+            split_vertical(root, 1 - mfactor, &stack_area, &master_area);
+            break;
 
-            ww = wm->usable_width - mw;
-            wh = wm->usable_height / (ntiled - nmaster);
-            wx = 0;
-            wy = 0;
+        case MASTER_TOP:
+            split_horizontal(root, mfactor, &master_area, &stack_area);
             break;
 
         case MASTER_BOTTOM:
-            mw = wm->usable_width;
-            mh = wm->usable_height * mfactor;
-            mx = 0;
-            my = wm->usable_height - mh;
-
-            ww = wm->usable_width / (ntiled - nmaster);
-            wh = wm->usable_height - mh;
-            wx = 0;
-            wy = 0;
-            break;
-
-        case MASTER_LEFT:
-            mw = wm->usable_width * mfactor;
-            mh = wm->usable_height;
-            mx = 0;
-            my = 0;
-
-            ww = wm->usable_width - mw;
-            wh = wm->usable_height / (ntiled - nmaster);
-            wx = mw;
-            wy = 0;
+            split_horizontal(root, 1 - mfactor, &stack_area, &master_area);
             break;
     }
 
-    moveresize_window(wm, wm->master, mw, mh, mx + wm->usable_x, my + wm->usable_y);
+    Rect stacked_rects[MAX_CLIENTS - nmaster];
+    stack_rects(master_pos, stack_area, nstack, &stacked_rects[0]);
 
+    moveresize_window(wm, wm->master, master_area.width, master_area.height, master_area.x, master_area.y);
+
+    int i = 0;
     for(Client *c = wm->clients; c; c = c->next){
-        if(c == wm->master || c->floating) continue;
+        if(c->floating || wm->master == c)
+            continue;
 
-        moveresize_window(wm, c, ww, wh, wx + wm->usable_x, wy + wm->usable_y);
-        if(master_pos == MASTER_TOP || master_pos == MASTER_BOTTOM)
-            wx += ww;
-        else
-            wy += wh;
+        Rect r = stacked_rects[i];
+
+        moveresize_window(wm, c, r.width, r.height, r.x, r.y);
+        i++;
     }
+
 }
 
 void monocle_tile(WM *wm){
@@ -141,7 +162,7 @@ void monocle_tile(WM *wm){
 }
 
 void resize(WM *wm, const Arg *arg){
-    if(wm->layouts[wm->active_layout].id == LAYOUT_MONOCLE) return;
+    if(wm->layouts[wm->active_layout].id != LAYOUT_MASTER) return;
 
     int dir = arg->i;
     float change = 0;

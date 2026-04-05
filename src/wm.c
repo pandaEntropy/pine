@@ -72,6 +72,8 @@ bool get_any_strut(WM *wm, Dock *dock);
 
 Dock *win_in_docks(Window win);
 
+void handle_net_close_window_msg(WM *wm, XClientMessageEvent *cm);
+
 bool subwin_unmapped = false;
 
 unsigned long active_color = 0x3399FF;
@@ -195,19 +197,19 @@ void focus_direction(WM *wm, int dir) {
         switch (dir) {
             case DIR_LEFT:
                 valid = dx < 0;
-                dist = -dx + abs(dy);
+                dist = -dx + abs(2 * dy);
                 break;
             case DIR_RIGHT:
                 valid = dx > 0;
-                dist = dx + abs(dy);
+                dist = dx + abs(2 * dy);
                 break;
             case DIR_UP:
                 valid = dy < 0;
-                dist = -dy + abs(dx);
+                dist = -dy + abs(2 * dx);
                 break;
             case DIR_DOWN:
                 valid = dy > 0;
-                dist = dy + abs(dx);
+                dist = dy + abs(2 * dx);
                 break;
 
             default:
@@ -727,6 +729,7 @@ void init_atoms(WM *wm){
     wm->atoms.net_current_desktop = XInternAtom(wm->dpy, "_NET_CURRENT_DESKTOP", False);
     wm->atoms.net_workarea = XInternAtom(wm->dpy, "_NET_WORKAREA", False);
     wm->atoms.net_supp_wm_check = XInternAtom(wm->dpy, "_NET_SUPPORTING_WM_CHECK", False);
+    wm->atoms.net_close_window = XInternAtom(wm->dpy, "_NET_CLOSE_WINDOW", False);
 
     wm->atoms.wm_protocols = XInternAtom(wm->dpy, "WM_PROTOCOLS", False);
     wm->atoms.wm_delete_window = XInternAtom(wm->dpy, "WM_DELETE_WINDOW", False);
@@ -760,17 +763,27 @@ void handle_client_msg(WM *wm, XClientMessageEvent *cm){
     if(cm->message_type == wm->atoms.net_active_window){
         handle_net_active_window_msg(wm, cm);
     }
+    else if(cm->message_type == wm->atoms.net_close_window){
+        handle_net_close_window_msg(wm, cm);
+    }
 }
 
 void handle_net_active_window_msg(WM *wm, XClientMessageEvent *cm){
     Client *c = win_in_clients(wm, cm->window);
 
-    if(!c)
-        return;
+    if(c){
+        focus(wm, c);
 
-    focus(wm, c);
+        XRaiseWindow(wm->dpy, c->win);
+    }
+}
 
-    XRaiseWindow(wm->dpy, c->win);
+void handle_net_close_window_msg(WM *wm, XClientMessageEvent *cm){
+    Client *c = win_in_clients(wm, cm->window);
+
+    if(c){
+        kill_client(wm, c);
+    }
 }
 
 void update_net_clients(WM *wm){
@@ -811,7 +824,8 @@ void initset_net_supported(WM *wm){
         wm->atoms.net_num_of_desktops,
         wm->atoms.net_current_desktop,
         wm->atoms.net_workarea,
-        wm->atoms.net_supp_wm_check
+        wm->atoms.net_supp_wm_check,
+        wm->atoms.net_close_window
     };
 
     int nsupp = sizeof(supported) / sizeof(supported[0]);

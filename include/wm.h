@@ -9,6 +9,8 @@
 #define PROTO_DELETE (1 << 0)
 #define PROTO_TAKE_FOCUS (1 << 1)
 
+#define MAX_CLIENTS 128
+
 typedef struct Client{
     Window win;
     struct Client *next;
@@ -76,6 +78,7 @@ typedef struct Atoms{
     Atom net_current_desktop;
     Atom net_workarea;
     Atom net_supp_wm_check;
+    Atom net_close_window;
 
     Atom wm_protocols;
     Atom wm_take_focus;
