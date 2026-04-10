@@ -3,6 +3,7 @@
 
 #include <X11/Xlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 MasterPosition master_pos = MASTER_LEFT;
 float mfactor = 0.5;
@@ -22,10 +23,6 @@ void moveresize_window(WM *wm, Client *c, unsigned int width, unsigned int heigh
 
 Layout master_layout(){
     return (Layout){.id = LAYOUT_MASTER, .tile = master_tile, .rotate = master_rotate, .focus = focus_direction};
-}
-
-Layout horizontal_layout(){
-    return (Layout){.id = LAYOUT_HORIZONTAL, .tile = horizontal_tile, .rotate = horizontal_rotate, .focus = focus_direction};
 }
 
 Layout monocle_layout(){
@@ -57,9 +54,9 @@ void split_vertical(Rect area, float factor, Rect *a, Rect *b){
     *b = (Rect){area.width - split, area.height, area.x + split, area.y};
 }
 
-void stack_rects(MasterPosition master_pos, Rect area, int nrects, Rect *stack){
+void stack_rects(bool horizontal, Rect area, int nrects, Rect *stack){
     for(int i = 0; i < nrects; i++){
-        if(master_pos == MASTER_RIGHT || master_pos == MASTER_LEFT){
+        if(horizontal){ //horizontal stacking
             int h = area.height / nrects;
 
             stack[i] = (Rect){
@@ -80,20 +77,6 @@ void stack_rects(MasterPosition master_pos, Rect area, int nrects, Rect *stack){
             };
  
         }
-    }
-}
-
-void horizontal_tile(WM *wm){
-    int i = 0;
-    for(Client *c = wm->clients; c; c = c->next){
-        int h = wm->usable_height;
-        int w = wm->usable_width / ntiled;
-
-        int x = w * i;
-        int y = 0;
-
-        moveresize_window(wm, c, w, h, x + wm->usable_x, y + wm->usable_y);
-        i++;
     }
 }
 
@@ -128,8 +111,8 @@ void master_tile(WM *wm){
             break;
     }
 
-    Rect stacked_rects[MAX_CLIENTS - nmaster];
-    stack_rects(master_pos, stack_area, nstack, &stacked_rects[0]);
+    Rect stacked_rects[ntiled - nmaster];
+    stack_rects(master_pos == MASTER_RIGHT || master_pos == MASTER_LEFT, stack_area, nstack, stacked_rects);
 
     moveresize_window(wm, wm->master, master_area.width, master_area.height, master_area.x, master_area.y);
 
@@ -202,25 +185,6 @@ void rotate(WM *wm, const Arg *arg){
     if(ntiled < 2) return;
 
     wm->layouts[wm->active_layout].rotate(wm);
-}
-
-void horizontal_rotate(WM *wm){
-    if(!wm->clients) return;
-
-    XWindowAttributes first_attr;
-    XGetWindowAttributes(wm->dpy, wm->clients->parent, &first_attr);
-
-    for(Client *c = wm->clients; c; c = c->next){
-        if(c->next == NULL){
-            moveresize_window(wm, c, first_attr.width, first_attr.height, first_attr.x, first_attr.y);
-            break;
-        }
-
-        XWindowAttributes next_attr;
-        XGetWindowAttributes(wm->dpy, c->next->parent, &next_attr);
-
-        moveresize_window(wm, c, next_attr.width, next_attr.height, next_attr.x, next_attr.y);
-    }
 }
 
 void master_rotate(WM *wm){

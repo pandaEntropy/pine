@@ -6,11 +6,6 @@
 
 #include "forward.h"
 
-#define PROTO_DELETE (1 << 0)
-#define PROTO_TAKE_FOCUS (1 << 1)
-
-#define MAX_CLIENTS 128
-
 typedef struct Client{
     Window win;
     struct Client *next;
@@ -50,7 +45,6 @@ typedef enum Direction{
 
 typedef enum{
     LAYOUT_MASTER,
-    LAYOUT_HORIZONTAL,
     LAYOUT_MONOCLE
 }LayoutID;
 

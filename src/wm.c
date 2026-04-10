@@ -16,6 +16,9 @@
 
 #define MAX_DOCKS 8
 
+#define PROTO_DELETE (1 << 0)
+#define PROTO_TAKE_FOCUS (1 << 1)
+
 typedef enum Wintype{
     WIN_DIALOG,
     WIN_SPLASH,
@@ -748,13 +751,12 @@ Client *last_client(WM *wm){
 void init_layouts(WM *wm){
     //init order must match LayoutID order
     wm->layouts[0] = master_layout();
-    wm->layouts[1] = horizontal_layout();
-    wm->layouts[2] = monocle_layout();
+    wm->layouts[1] = monocle_layout();
 }
 
 void switch_layout(WM *wm, const Arg *arg){
     (void)arg;
-    wm->active_layout = (wm->active_layout+1) % 3;
+    wm->active_layout = (wm->active_layout+1) % 2;
     tile(wm);
 }
 
