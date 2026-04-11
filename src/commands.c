@@ -40,7 +40,9 @@ Command commands[] = {
     {"resize_left", resize, {.i = DIR_LEFT}},
     {"resize_up", resize, {.i = DIR_UP}},
     {"resize_down", resize, {.i = DIR_DOWN}},
-    {"switch_layout", switch_layout, {0}}
+    {"switch_layout", switch_layout, {0}},
+    {"switch_workspace_left", switch_workspace, {.i = DIR_LEFT}},
+    {"switch_workspace_right", switch_workspace, {.i = DIR_RIGHT}},
 };
 
 void dispatch_command(WM *wm, const char *cmd){

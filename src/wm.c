@@ -15,9 +15,12 @@
 #include "forward.h"
 
 #define MAX_DOCKS 8
+#define MAX_WS 9
 
 #define PROTO_DELETE (1 << 0)
 #define PROTO_TAKE_FOCUS (1 << 1)
+
+#define Tag(n) (1U << (n))
 
 typedef enum Wintype{
     WIN_DIALOG,
@@ -159,28 +162,33 @@ void handle_XEvent(WM *wm, XEvent *ev){
 }
 
 void cmd_focus(WM *wm, const Arg *arg){
-    wm->layouts[wm->active_layout].focus(wm, arg->i);
+    wm->workspaces[wm->current_ws].layout->focus(wm, arg->i);
 
-    if(wm->layouts[wm->active_layout].id == LAYOUT_MONOCLE){
+    if(wm->workspaces[wm->current_ws].layout->id == LAYOUT_MONOCLE){
         tile(wm);
     }
 }
 
 void focus_direction(WM *wm, int dir) {
-    if (!wm->focused) return;
+    if (!wm->workspaces[wm->current_ws].focused){
+        printf("failed focus dir check\n");
+        return;
+    }
 
     Client *best = NULL;
     int bestdist = INT_MAX;
 
+
     XWindowAttributes fa;
-    XGetWindowAttributes(wm->dpy, wm->focused->parent, &fa);
+    XGetWindowAttributes(wm->dpy, wm->workspaces[wm->current_ws].focused->parent, &fa);
 
     //get the center of the focused window
     int fx = fa.x + fa.width / 2;
     int fy = fa.y + fa.height / 2;
 
     for (Client *c = wm->clients; c; c = c->next) {
-        if (c == wm->focused) continue;
+        if (c == wm->workspaces[wm->current_ws].focused) continue;
+        if(!(c->wtags & wm->current_wtag)) continue;
 
         XWindowAttributes wa;
         XGetWindowAttributes(wm->dpy, c->parent, &wa);
@@ -234,16 +242,16 @@ void monocle_focus(WM *wm, int dir){
     if(wm->nclients < 2) return;
 
     if(dir == DIR_RIGHT){
-        if(wm->focused->next){
-            focus(wm, wm->focused->next);
+        if(wm->workspaces[wm->current_ws].focused->next){
+            focus(wm, wm->workspaces[wm->current_ws].focused->next);
         }
         else
             focus(wm, wm->clients);
     }
 
     else if(dir == DIR_LEFT){
-        if(wm->focused->prev)
-            focus(wm, wm->focused->prev);
+        if(wm->workspaces[wm->current_ws].focused->prev)
+            focus(wm, wm->workspaces[wm->current_ws].focused->prev);
 
         else
             focus(wm, last_client(wm));
@@ -264,7 +272,7 @@ void unmap(WM *wm, const Arg *arg){
     }
     else{
         XMapSubwindows(wm->dpy, wm->root);
-        focus(wm, wm->focused); // to revert focus on X state and update net active window
+        focus(wm, wm->workspaces[wm->current_ws].focused); // to revert focus on X state and update net active window
         subwin_unmapped = false;
     }
 }
@@ -272,13 +280,14 @@ void unmap(WM *wm, const Arg *arg){
 void cmd_kill(WM *wm, const Arg *arg){
     (void)arg;
 
-    if(!wm->focused) return;
+    if(!wm->workspaces[wm->current_ws].focused) return;
 
-    kill_client(wm, wm->focused);
+    kill_client(wm, wm->workspaces[wm->current_ws].focused);
 }
 
 void kill_client(WM *wm, Client *c){
     if(!c) return;
+    if(!(c->wtags & wm->current_wtag)) return;
 
     if(c->protocols & PROTO_DELETE){
         XEvent ev = {0};
@@ -313,15 +322,23 @@ void manage(WM *wm, Window win){
     if(!c) return;
 
     c->win = win;
-    c->next = wm->clients;
 
-    if(wm->clients)
-        wm->clients->prev = c;
+    c->next = NULL;
 
+    if(wm->tail){
+        wm->tail->next = c;
+        c->prev = wm->tail;
+    } 
+    else{
     wm->clients = c;
+    c->prev = NULL;
+    }
+
+    wm->tail = c;
     wm->nclients++;
 
     set_protocols(wm, c);
+    c->wtags = Tag(wm->current_ws);
 
     if(type == WIN_DIALOG || type == WIN_SPLASH || type == WIN_MENU){
         c->floating = true;
@@ -341,21 +358,10 @@ void manage(WM *wm, Window win){
     XAddToSaveSet(wm->dpy, c->win);
 
     if(!c->floating){
-        if(wm->nclients == 1)
-            wm->master = c;
-
         tile(wm);
     }
 
-    XMapWindow(wm->dpy, c->parent);
-    XMapWindow(wm->dpy, c->win);
-
     focus(wm, c);
-
-    if(wm->active_layout == LAYOUT_MONOCLE){
-        XRaiseWindow(wm->dpy, wm->focused->parent);
-        XRaiseWindow(wm->dpy, wm->focused->win);
-    }
 }
 
 void unmanage(WM *wm, Window win){
@@ -371,52 +377,58 @@ void unmanage(WM *wm, Window win){
     Client *c = win_in_clients(wm, win);
     if(!c) return;
 
-    bool was_master = (c == wm->master);
-    bool was_focused = (c == wm->focused);
+    bool was_focused = (c == wm->workspaces[wm->current_ws].focused);
 
 
     if(c->prev)
         c->prev->next = c->next;
-    else{
+    else
         wm->clients = c->next;
-        if(wm->clients)
-            wm->clients->prev = NULL;
-    }
 
     if(c->next)
         c->next->prev = c->prev;
+    else
+        wm->tail = c->prev;
 
-    if(was_master)
-        wm->master = wm->clients;
-
+    //handles focus by finding the next visible client
     if(was_focused){
-        if(c->next)
-            focus(wm, c->next);
-        else if(c->prev)
-            focus(wm, c->prev);
-        else
-            wm->focused = NULL;
-    }
-    wm->nclients--;
+        Client *next = c->next;
+        while(next && !(next->wtags & wm->current_wtag))
+            next = next->next;
 
-    if(wm->nclients < 1)
-        XSetInputFocus(wm->dpy, wm->root, RevertToNone, CurrentTime);
+        Client *prev = c->prev;
+        while(!next && prev && !(prev->wtags & wm->current_wtag))
+            prev = prev->prev;
+
+        if(next)
+            focus(wm, next);
+        else if(prev)
+            focus(wm, prev);
+        else{
+            wm->workspaces[wm->current_ws].focused = NULL;
+            XSetInputFocus(wm->dpy, wm->root, RevertToNone, CurrentTime);
+        }
+    }
+
+    wm->nclients--;
 
     update_net_clients(wm);
 
     unparent(wm, c);
 
     tile(wm);
-    free(c); //free the removed client
+    free(c);
 }
 
 void focus(WM *wm, Client *c){
     if(!c) return;
 
-    if(wm->focused)
-        XSetWindowBorder(wm->dpy, wm->focused->parent, inactive_color);
+    if(!(c->wtags & wm->current_wtag)) return;
 
-    wm->focused = c;
+    if(wm->workspaces[wm->current_ws].focused)
+        XSetWindowBorder(wm->dpy, wm->workspaces[wm->current_ws].focused->parent, inactive_color);
+
+    wm->workspaces[wm->current_ws].focused = c;
 
     if(c->protocols & PROTO_TAKE_FOCUS){
         XEvent ev = {0};
@@ -440,13 +452,36 @@ void focus(WM *wm, Client *c){
 
     XChangeProperty(wm->dpy, wm->root, wm->atoms.net_active_window, XA_WINDOW, 32, PropModeReplace, (unsigned char *)&c->win, 1);
 
-    XSetWindowBorder(wm->dpy, wm->focused->parent, active_color);
+    XSetWindowBorder(wm->dpy, wm->workspaces[wm->current_ws].focused->parent, active_color);
 }
 
 void set_master(WM *wm, const Arg *arg){
     (void)arg;
-    if(!wm->focused) return;
-    wm->master = wm->focused;
+
+    if(!wm->clients) return;
+
+    Workspace *ws = &wm->workspaces[wm->current_ws];
+    Client *c = ws->focused;
+
+    if(!c || c->floating || !(c->wtags & wm->current_wtag) || c == wm->clients) return;
+
+    if(c->prev)
+        c->prev->next = c->next;
+    else
+        wm->clients = c->next;
+
+    if(c->next)
+        c->next->prev = c->prev;
+    else
+        wm->tail = c->prev;
+
+    c->next = wm->clients;
+    c->prev = NULL;
+
+    wm->clients->prev = c;
+
+    wm->clients = c;
+
     tile(wm);
 }
 
@@ -749,14 +784,18 @@ Client *last_client(WM *wm){
 }
 
 void init_layouts(WM *wm){
-    //init order must match LayoutID order
+    //order must match LayoutID order
     wm->layouts[0] = master_layout();
     wm->layouts[1] = monocle_layout();
 }
 
 void switch_layout(WM *wm, const Arg *arg){
     (void)arg;
-    wm->active_layout = (wm->active_layout+1) % 2;
+    Workspace *ws = &wm->workspaces[wm->current_ws];
+
+    ws->layout_id = (ws->layout_id + 1) % 2; // 2 is the num of layouts
+    ws->layout = &wm->layouts[ws->layout_id];
+
     tile(wm);
 }
 
@@ -844,8 +883,7 @@ void initset_net_supported(WM *wm){
 }
 
 void update_net_num_of_desktops(WM *wm){
-    //Currently unfinished since I don't have virtual desktops yet
-    long n = 1;
+    long n = MAX_WS;
 
     XChangeProperty(
         wm->dpy,
@@ -860,8 +898,7 @@ void update_net_num_of_desktops(WM *wm){
 }
 
 void update_net_current_desktop(WM *wm){
-    //Temporary. Don't forget to finish this after finishing desktops
-    long n = 0;
+    long n = wm->current_ws;
 
     XChangeProperty(
         wm->dpy,
@@ -1043,4 +1080,37 @@ Dock *win_in_docks(Window win){
     }
 
     return NULL;
+}
+
+void init_workspaces(WM *wm){
+    for(int i = 0; i < MAX_WS; i++){
+        wm->workspaces[i].layout = &wm->layouts[0];
+        wm->workspaces[i].layout_id = LAYOUT_MASTER;
+        wm->workspaces[i].focused = NULL;
+        wm->workspaces[i].mfactor = 0.5;
+        wm->workspaces[i].master_pos = MASTER_LEFT;
+    }
+
+    wm->current_ws = 0;
+    wm->current_wtag = Tag(wm->current_ws);
+}
+
+void switch_workspace(WM *wm, const Arg *arg){
+    int dir = arg->i;
+
+    if(dir == DIR_RIGHT){
+        wm->current_ws = (wm->current_ws + 1) % MAX_WS;
+    }
+    else if(dir == DIR_LEFT){
+        wm->current_ws = (wm->current_ws - 1 + MAX_WS) % MAX_WS;
+    }
+
+    wm->current_wtag = Tag(wm->current_ws);
+
+    update_net_current_desktop(wm);
+
+    tile(wm);
+
+    if(wm->workspaces[wm->current_ws].focused)
+        focus(wm, wm->workspaces[wm->current_ws].focused);
 }

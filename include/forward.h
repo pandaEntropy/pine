@@ -11,4 +11,6 @@ typedef struct Arg Arg;
 
 typedef struct Layout Layout;
 
+typedef struct LayoutTarget LayoutTarget;
+
 #endif

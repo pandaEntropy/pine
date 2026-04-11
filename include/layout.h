@@ -19,13 +19,11 @@ Layout horizontal_layout();
 
 Layout monocle_layout();
 
-void horizontal_tile(WM *wm);
-
 void tile(WM *wm);
 
-void master_tile(WM *wm);
+void master_tile(WM *wm, LayoutTarget *targets);
 
-void monocle_tile(WM *wm);
+void monocle_tile(WM *wm, LayoutTarget *targets);
 
 void rotate(WM *wm, const Arg *arg);
 

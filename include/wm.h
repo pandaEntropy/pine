@@ -3,6 +3,7 @@
 
 #include <X11/Xlib.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "forward.h"
 
@@ -13,6 +14,8 @@ typedef struct Client{
     bool floating;
     unsigned int protocols;
     Window parent;
+
+    uint32_t wtags; //workspace tags
 }Client;
 
 typedef struct Dock{
@@ -50,7 +53,7 @@ typedef enum{
 
 typedef struct Layout{
     LayoutID id;
-    void (*tile)(WM *);
+    void (*tile)(WM *, LayoutTarget *targets);
     void (*rotate)(WM *);
     void (*focus)(WM *, int);
 }Layout;
@@ -80,18 +83,30 @@ typedef struct Atoms{
  
 }Atoms;
 
+typedef struct Workspace{
+    LayoutID layout_id;
+    Layout *layout;
+    int master_pos;
+
+    float mfactor;
+    Client *focused;
+}Workspace;
+
 typedef struct WM{
     Display *dpy;
     Window root;
     int sw;
     int sh;
 
-    Client *focused;
-    Client *master;
     Client *clients;
+    Client *tail;
     int nclients;
     int usable_height;
     int usable_width;
+
+    Workspace workspaces[9];
+    int current_ws;
+    uint32_t current_wtag;
 
     //first usable point from the origin
     int usable_x; 
@@ -99,7 +114,6 @@ typedef struct WM{
 
     Atoms atoms;
 
-    int active_layout; //index of the active layout in layouts
     Layout layouts[8];
 }WM;
 
@@ -146,5 +160,9 @@ void update_net_current_desktop(WM *wm);
 void set_net_supp_wm_check(WM *wm);
 
 void send_conf_req(WM *wm, Client *c, int width, int height, int x, int y);
+
+void init_workspaces(WM *wm);
+
+void switch_workspace(WM *wm, const Arg *arg);
 
 #endif

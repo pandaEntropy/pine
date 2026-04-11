@@ -5,7 +5,8 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-MasterPosition master_pos = MASTER_LEFT;
+#define MAX_MASTER 1
+
 float mfactor = 0.5;
 int nmaster = 1;
 int ntiled = 0;
@@ -18,6 +19,11 @@ typedef struct{
     int x;
     int y;
 }Rect;
+
+typedef struct LayoutTarget{
+    Client *client;
+    Rect geom;
+}LayoutTarget;
 
 void moveresize_window(WM *wm, Client *c, unsigned int width, unsigned int height, int x, int y);
 
@@ -33,11 +39,49 @@ void tile(WM *wm){
     ntiled = 0;
 
     for(Client *c = wm->clients; c; c = c->next){
-        if(!c->floating)
-            ntiled++;
+        if(c->wtags & wm->current_wtag){
+            if(!c->floating){
+                ntiled++;
+            }
+        }
+        else{
+            XUnmapWindow(wm->dpy, c->parent);
+            XUnmapWindow(wm->dpy, c->win);
+        }
     }
 
-    wm->layouts[wm->active_layout].tile(wm);
+    if(ntiled > 0){
+        LayoutTarget targets[ntiled];
+        wm->workspaces[wm->current_ws].layout->tile(wm, targets);
+
+        int i = 0;
+        for(Client *c = wm->clients; c; c = c->next){
+            if(!c->floating && (c->wtags & wm->current_wtag)){
+                targets[i].client = c;
+                i++;
+            }
+        }
+
+        for(int j = 0; j < ntiled; j++){
+            moveresize_window(wm, targets[j].client,
+                    targets[j].geom.width,
+                    targets[j].geom.height,
+                    targets[j].geom.x,
+                    targets[j].geom.y);
+        }
+    }
+
+    for(Client *c = wm->clients; c; c = c->next){
+        if(c->wtags & wm->current_wtag){
+            if(c->parent) XMapWindow(wm->dpy, c->parent);
+            XMapWindow(wm->dpy, c->win);
+        }
+    }
+
+    if(wm->workspaces[wm->current_ws].focused){
+        XRaiseWindow(wm->dpy, wm->workspaces[wm->current_ws].focused->parent);
+        XRaiseWindow(wm->dpy, wm->workspaces[wm->current_ws].focused->win);
+    }
 }
 
 void split_horizontal(Rect area, float factor, Rect *a, Rect *b){
@@ -75,17 +119,17 @@ void stack_rects(bool horizontal, Rect area, int nrects, Rect *stack){
                 area.x + i * w,
                 area.y
             };
- 
+
         }
     }
 }
 
-void master_tile(WM *wm){
-    if(ntiled == 0 || nmaster == 0) return;
+void master_tile(WM *wm, LayoutTarget *targets){
+    if(ntiled == 0) return;
 
-    int nstack = ntiled - nmaster;
+    int nstack = ntiled - MAX_MASTER; //the max master count and is always 1
     if(nstack <= 0){
-        moveresize_window(wm, wm->master, wm->usable_width, wm->usable_height, wm->usable_x, wm->usable_y);
+        targets[0].geom = (Rect){wm->usable_width, wm->usable_height, wm->usable_x, wm->usable_y};
         return;
     }
 
@@ -93,7 +137,7 @@ void master_tile(WM *wm){
 
     Rect master_area, stack_area;
 
-    switch(master_pos){
+    switch(wm->workspaces[wm->current_ws].master_pos){
         case MASTER_LEFT:
             split_vertical(root, mfactor, &master_area, &stack_area);
             break;
@@ -111,48 +155,32 @@ void master_tile(WM *wm){
             break;
     }
 
-    Rect stacked_rects[ntiled - nmaster];
-    stack_rects(master_pos == MASTER_RIGHT || master_pos == MASTER_LEFT, stack_area, nstack, stacked_rects);
+    Rect stacked_rects[ntiled - MAX_MASTER];
+    stack_rects(wm->workspaces[wm->current_ws].master_pos == MASTER_RIGHT || wm->workspaces[wm->current_ws].master_pos == MASTER_LEFT, 
+            stack_area, nstack, stacked_rects);
 
-    moveresize_window(wm, wm->master, master_area.width, master_area.height, master_area.x, master_area.y);
+    targets[0].geom = master_area;
 
-    int i = 0;
-    for(Client *c = wm->clients; c; c = c->next){
-        if(c->floating || wm->master == c)
-            continue;
-
-        Rect r = stacked_rects[i];
-
-        moveresize_window(wm, c, r.width, r.height, r.x, r.y);
-        i++;
+    for(int i = MAX_MASTER; i < ntiled; i++){
+        targets[i].geom = stacked_rects[i - MAX_MASTER];
     }
-
 }
 
-void monocle_tile(WM *wm){
-    if(!wm->clients) return;
-
-    for(Client *c = wm->clients; c; c = c->next){
-        if(c->floating) continue;
-
-        moveresize_window(wm, c, wm->usable_width, wm->usable_height, wm->usable_x, wm->usable_y);
-    }
-
-    if(wm->focused){
-        XRaiseWindow(wm->dpy, wm->focused->parent);
-        XRaiseWindow(wm->dpy, wm->focused->win);
+void monocle_tile(WM *wm, LayoutTarget *targets){
+    for(int i = 0; i < ntiled; i++){
+        targets[i].geom = (Rect){wm->usable_width, wm->usable_height, wm->usable_x, wm->usable_y};
     }
 }
 
 void resize(WM *wm, const Arg *arg){
-    if(wm->layouts[wm->active_layout].id != LAYOUT_MASTER) return;
+    if(wm->workspaces[wm->current_ws].layout->id != LAYOUT_MASTER) return;
 
     int dir = arg->i;
     float change = 0;
 
     if(ntiled < 2)
         return;
-    switch(master_pos){
+    switch(wm->workspaces[wm->current_ws].master_pos){
         case MASTER_LEFT:
             if(dir == DIR_LEFT) change = -0.05;
             if(dir == DIR_RIGHT) change = 0.05;
@@ -184,12 +212,12 @@ void rotate(WM *wm, const Arg *arg){
     (void)arg;
     if(ntiled < 2) return;
 
-    wm->layouts[wm->active_layout].rotate(wm);
+    wm->workspaces[wm->current_ws].layout->rotate(wm);
 }
 
 void master_rotate(WM *wm){
     //Cycle the enum
-    master_pos = (master_pos+1) % 4;
+    wm->workspaces[wm->current_ws].master_pos = (wm->workspaces[wm->current_ws].master_pos+1) % 4;
     tile(wm);
 }
 
@@ -210,7 +238,8 @@ void parent_center(WM *wm, Window parent, Client *c){
     if(x < 0) x = 0;
     if(y < 0) y = 0;
 
-    moveresize_window(wm, c, cattr.width, cattr.height, x, y);
+    if(c->wtags & wm->current_wtag)
+        moveresize_window(wm, c, cattr.width, cattr.height, x, y);
 }
 
 void screen_center(WM *wm, Client *c){
@@ -224,7 +253,8 @@ void screen_center(WM *wm, Client *c){
     if(x < 0) x = 0;
     if(y < 0) y = 0;
 
-    moveresize_window(wm, c, cattr.width, cattr.height, x, y);
+    if(c->wtags & wm->current_wtag)
+        moveresize_window(wm, c, cattr.width, cattr.height, x, y);
 }
 
 void moveresize_window(WM *wm, Client *c, unsigned int width, unsigned int height, int x, int y){

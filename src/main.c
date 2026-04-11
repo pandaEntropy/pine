@@ -79,19 +79,17 @@ int main(void)
 
     set_net_supp_wm_check(&wm);
 
-    //Temporary as I have yet to implement desktops
-    update_net_num_of_desktops(&wm);
-    update_net_current_desktop(&wm);
-
     //Set the net supported property on root
     initset_net_supported(&wm);
 
     wm.usable_height = wm.sh;
     wm.usable_width = wm.sw;
 
-    wm.active_layout = LAYOUT_MONOCLE;
-
     init_layouts(&wm);
+
+    update_net_num_of_desktops(&wm);
+    update_net_current_desktop(&wm);
+    init_workspaces(&wm);
 
     XSync(wm.dpy, False);
 
