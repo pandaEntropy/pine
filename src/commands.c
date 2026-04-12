@@ -43,6 +43,15 @@ Command commands[] = {
     {"switch_layout", switch_layout, {0}},
     {"switch_workspace_left", switch_workspace, {.i = DIR_LEFT}},
     {"switch_workspace_right", switch_workspace, {.i = DIR_RIGHT}},
+    {"switch_cli_ws_1", switch_cli_ws, {.i = 0}},
+    {"switch_cli_ws_2", switch_cli_ws, {.i = 1}},
+    {"switch_cli_ws_3", switch_cli_ws, {.i = 2}},
+    {"switch_cli_ws_4", switch_cli_ws, {.i = 3}},
+    {"switch_cli_ws_5", switch_cli_ws, {.i = 4}},
+    {"switch_cli_ws_6", switch_cli_ws, {.i = 5}},
+    {"switch_cli_ws_7", switch_cli_ws, {.i = 6}},
+    {"switch_cli_ws_8", switch_cli_ws, {.i = 7}},
+    {"switch_cli_ws_9", switch_cli_ws, {.i = 8}}
 };
 
 void dispatch_command(WM *wm, const char *cmd){

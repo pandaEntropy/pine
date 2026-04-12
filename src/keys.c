@@ -26,8 +26,17 @@ Key keys[] = {
     {XK_j, Mod1Mask | ControlMask, "resize_down"},
     {XK_Return, Mod1Mask | ControlMask, "set_master"},
     {XK_m, Mod1Mask, "switch_layout"},
-    {XK_Right, Mod1Mask | ShiftMask, "switch_workspace_right"},
-    {XK_Left, Mod1Mask | ShiftMask, "switch_workspace_left"}
+    {XK_Right, Mod1Mask | ControlMask, "switch_workspace_right"},
+    {XK_Left, Mod1Mask | ControlMask, "switch_workspace_left"},
+    {XK_1, Mod1Mask | ControlMask, "switch_cli_ws_1"},
+    {XK_2, Mod1Mask | ControlMask, "switch_cli_ws_2"},
+    {XK_3, Mod1Mask | ControlMask, "switch_cli_ws_3"},
+    {XK_4, Mod1Mask | ControlMask, "switch_cli_ws_4"},
+    {XK_5, Mod1Mask | ControlMask, "switch_cli_ws_5"},
+    {XK_6, Mod1Mask | ControlMask, "switch_cli_ws_6"},
+    {XK_7, Mod1Mask | ControlMask, "switch_cli_ws_7"},
+    {XK_8, Mod1Mask | ControlMask, "switch_cli_ws_8"},
+    {XK_9, Mod1Mask | ControlMask, "switch_cli_ws_9"},
 };
 
 void grab_key(Display *dpy, KeySym keysym, unsigned int mod){

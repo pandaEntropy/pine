@@ -254,7 +254,7 @@ void monocle_focus(WM *wm, int dir){
             focus(wm, wm->workspaces[wm->current_ws].focused->prev);
 
         else
-            focus(wm, last_client(wm));
+            focus(wm, wm->tail);
 
     }
 }
@@ -423,7 +423,10 @@ void unmanage(WM *wm, Window win){
 void focus(WM *wm, Client *c){
     if(!c) return;
 
-    if(!(c->wtags & wm->current_wtag)) return;
+    if(!(c->wtags & wm->current_wtag)){
+        printf("returned from focus\n");
+        return;
+    }
 
     if(wm->workspaces[wm->current_ws].focused)
         XSetWindowBorder(wm->dpy, wm->workspaces[wm->current_ws].focused->parent, inactive_color);
@@ -627,15 +630,6 @@ void unmanage_dock(WM *wm, Window win){
     recalc_usable_area(wm);
 }
 
-Client* get_client(WM *wm, Window win){
-    for(Client *c = wm->clients; c; c = c->next){
-        if(c->win == win)
-            return c;
-    }
-
-    return NULL;
-}
-
 Wintype classify_window(WM *wm, Window win){
     Atom actual_type;
     int actual_format;
@@ -774,19 +768,10 @@ void init_atoms(WM *wm){
     wm->atoms.wm_take_focus = XInternAtom(wm->dpy, "WM_TAKE_FOCUS", False);
 }
 
-Client *last_client(WM *wm){
-    for(Client *c = wm->clients; c; c = c->next){
-        if(!c->next)
-            return c;
-    }
-
-    return NULL;
-}
-
 void init_layouts(WM *wm){
     //order must match LayoutID order
-    wm->layouts[0] = master_layout();
-    wm->layouts[1] = monocle_layout();
+    wm->layouts[LAYOUT_MASTER] = master_layout();
+    wm->layouts[LAYOUT_MONOCLE] = monocle_layout();
 }
 
 void switch_layout(WM *wm, const Arg *arg){
@@ -831,7 +816,7 @@ void update_net_clients(WM *wm){
     Window net_clients[wm->nclients];
 
     int i = 0;
-    for(Client *c = last_client(wm); c; c = c->prev){
+    for(Client *c = wm->clients; c; c = c->next){
         net_clients[i] = c->win;
         i++;
     }
@@ -1113,4 +1098,38 @@ void switch_workspace(WM *wm, const Arg *arg){
 
     if(wm->workspaces[wm->current_ws].focused)
         focus(wm, wm->workspaces[wm->current_ws].focused);
+}
+
+void switch_cli_ws(WM *wm, const Arg *arg){
+    int index = arg->i;
+    if(MAX_WS - 1 < index || index < 0) return;
+
+    Client *c = wm->workspaces[wm->current_ws].focused;
+    if(!c) return;
+
+    Client *next = c->next;
+    while(next && !(next->wtags & wm->current_wtag))
+        next = next->next;
+
+    Client *prev = c->prev;
+    while(!next && prev && !(prev->wtags & wm->current_wtag))
+        prev = prev->prev;
+
+    if(next)
+        wm->workspaces[wm->current_ws].focused = next;
+    else if(prev)
+        wm->workspaces[wm->current_ws].focused = prev;
+    else{
+        wm->workspaces[wm->current_ws].focused = NULL;
+    }
+
+    c->wtags = Tag(index);
+    wm->current_ws = index;
+    wm->current_wtag = Tag(index);
+
+    update_net_current_desktop(wm);
+
+    tile(wm);
+
+    focus(wm, c);
 }

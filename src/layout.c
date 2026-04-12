@@ -7,8 +7,6 @@
 
 #define MAX_MASTER 1
 
-float mfactor = 0.5;
-int nmaster = 1;
 int ntiled = 0;
 
 int border_width = 4;
@@ -137,27 +135,28 @@ void master_tile(WM *wm, LayoutTarget *targets){
 
     Rect master_area, stack_area;
 
-    switch(wm->workspaces[wm->current_ws].master_pos){
+    Workspace *ws = &wm->workspaces[wm->current_ws];
+
+    switch(ws->master_pos){
         case MASTER_LEFT:
-            split_vertical(root, mfactor, &master_area, &stack_area);
+            split_vertical(root, ws->mfactor, &master_area, &stack_area);
             break;
 
         case MASTER_RIGHT:
-            split_vertical(root, 1 - mfactor, &stack_area, &master_area);
+            split_vertical(root, 1 - ws->mfactor, &stack_area, &master_area);
             break;
 
         case MASTER_TOP:
-            split_horizontal(root, mfactor, &master_area, &stack_area);
+            split_horizontal(root, ws->mfactor, &master_area, &stack_area);
             break;
 
         case MASTER_BOTTOM:
-            split_horizontal(root, 1 - mfactor, &stack_area, &master_area);
+            split_horizontal(root, 1 - ws->mfactor, &stack_area, &master_area);
             break;
     }
 
     Rect stacked_rects[ntiled - MAX_MASTER];
-    stack_rects(wm->workspaces[wm->current_ws].master_pos == MASTER_RIGHT || wm->workspaces[wm->current_ws].master_pos == MASTER_LEFT, 
-            stack_area, nstack, stacked_rects);
+    stack_rects(ws->master_pos == MASTER_RIGHT || ws->master_pos == MASTER_LEFT, stack_area, nstack, stacked_rects);
 
     targets[0].geom = master_area;
 
@@ -180,7 +179,9 @@ void resize(WM *wm, const Arg *arg){
 
     if(ntiled < 2)
         return;
-    switch(wm->workspaces[wm->current_ws].master_pos){
+
+    Workspace *ws = &wm->workspaces[wm->current_ws];
+    switch(ws->master_pos){
         case MASTER_LEFT:
             if(dir == DIR_LEFT) change = -0.05;
             if(dir == DIR_RIGHT) change = 0.05;
@@ -201,10 +202,10 @@ void resize(WM *wm, const Arg *arg){
             if(dir == DIR_DOWN) change = -0.05;
             break;
     }
-    if(mfactor + change > 0.95 || mfactor + change < 0.05)
+    if(ws->mfactor + change > 0.95 || ws->mfactor + change < 0.05)
         return;
 
-    mfactor += change;
+    ws->mfactor += change;
     tile(wm);
 }
 

@@ -9,11 +9,12 @@
 
 typedef struct Client{
     Window win;
+    Window parent;
+
     struct Client *next;
     struct Client *prev;
     bool floating;
     unsigned int protocols;
-    Window parent;
 
     uint32_t wtags; //workspace tags
 }Client;
@@ -133,15 +134,11 @@ Client *win_in_clients(WM *wm, Window win);
 
 int has_wintype(int nitems, Atom *atoms, Atom type);
 
-Client* get_client(WM *wm, Window win); 
-
 Window get_transient(WM *wm, Window win);
 
 void set_protocols(WM *wm, Client *c);
 
 void init_atoms(WM *wm);
-
-Client *last_client(WM *wm);
 
 void monocle_focus(WM *wm, int dir);
 
@@ -164,5 +161,7 @@ void send_conf_req(WM *wm, Client *c, int width, int height, int x, int y);
 void init_workspaces(WM *wm);
 
 void switch_workspace(WM *wm, const Arg *arg);
+
+void switch_cli_ws(WM *wm, const Arg *arg);
 
 #endif
