@@ -8,6 +8,7 @@
 #include "wm.h"
 #include "keys.h"
 #include "ipc.h"
+#include "config.h"
 
 static int startup_err = 0;
 
@@ -91,6 +92,8 @@ int main(void)
     update_net_current_desktop(&wm);
     init_workspaces(&wm);
 
+    load_config(&wm, "/home/ilya/.config/moss/moss.conf");
+
     XSync(wm.dpy, False);
 
     ipc_init();
@@ -111,7 +114,7 @@ int main(void)
         }
 
         if(FD_ISSET(wmfd, &fds)){
-            ipc_handle(&wm);
+            //ipc_handle(&wm); TODO fix
             XFlush(wm.dpy);
         }
 

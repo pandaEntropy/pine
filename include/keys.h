@@ -11,4 +11,8 @@ void key_setup(Display *dpy);
 
 void handle_keypress(WM *wm, XKeyEvent *ev);
 
+void bind_key(WM *wm, char *name, KeySym sym, unsigned int modmask);
+
+unsigned int parse_mod(char *mod_token);
+
 #endif

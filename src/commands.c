@@ -4,62 +4,35 @@
 
 #include "wm.h"
 #include "commands.h"
-#include "layout.h"
-
-typedef struct{
-    char *name;
-    void (*func)(WM *wm, const Arg *);
-    Arg arg;
-}Command;
-
-const char *termcmd[] = {"xterm", NULL};
-
-void spawn(WM *wm, const Arg *arg){
-    (void)wm;
-    if(fork() == 0){
-        setsid(); // Create a new session for the child
-        execvp(arg->cparr[0], (char *const *)arg->cparr);
-
-        //If child fails
-        perror("execvp failed");
-        _exit(1); // A safe way to terminate the forked child
-    }
-}
+#include "keys.h"
 
 Command commands[] = {
-    {"focus_right", cmd_focus, {.i = DIR_RIGHT}},
-    {"focus_left", cmd_focus, {.i = DIR_LEFT}},
-    {"focus_down", cmd_focus, {.i = DIR_DOWN}},
-    {"focus_up", cmd_focus, {.i = DIR_UP}},
-    {"kill", cmd_kill, {0}},
-    {"spawn", spawn, {.cparr = termcmd}},
-    {"set_master", set_master, {0}},
-    {"rotate", rotate, {0}},
-    {"unmap", unmap, {0}},
-    {"resize_right", resize, {.i = DIR_RIGHT}},
-    {"resize_left", resize, {.i = DIR_LEFT}},
-    {"resize_up", resize, {.i = DIR_UP}},
-    {"resize_down", resize, {.i = DIR_DOWN}},
-    {"switch_layout", switch_layout, {0}},
-    {"switch_workspace_left", switch_workspace, {.i = DIR_LEFT}},
-    {"switch_workspace_right", switch_workspace, {.i = DIR_RIGHT}},
-    {"switch_cli_ws_1", switch_cli_ws, {.i = 0}},
-    {"switch_cli_ws_2", switch_cli_ws, {.i = 1}},
-    {"switch_cli_ws_3", switch_cli_ws, {.i = 2}},
-    {"switch_cli_ws_4", switch_cli_ws, {.i = 3}},
-    {"switch_cli_ws_5", switch_cli_ws, {.i = 4}},
-    {"switch_cli_ws_6", switch_cli_ws, {.i = 5}},
-    {"switch_cli_ws_7", switch_cli_ws, {.i = 6}},
-    {"switch_cli_ws_8", switch_cli_ws, {.i = 7}},
-    {"switch_cli_ws_9", switch_cli_ws, {.i = 8}}
+    {"bind", 4, handle_bind}
 };
 
-void dispatch_command(WM *wm, const char *cmd){
-    for(size_t i = 0; i < (sizeof(commands) / sizeof(Command)); i++){
-        if(strcmp(commands[i].name, cmd) == 0){
-            commands[i].func(wm, &commands[i].arg);
-            return;
+Command *find_cmd(char *name){
+    for(int i = 0; i < sizeof(commands) / sizeof(Command); i++){
+        if(strcmp(name, commands[i].name) == 0){
+            return &commands[i];
         }
     }
-    fprintf(stderr, "WARN: Command not found");
+    fprintf(stderr, "find_cmd: Command not found\n");
+    return NULL;
+}
+
+void handle_bind(WM *wm, char **tokens, int count){
+    char *name = tokens[1];
+
+    KeySym sym = XStringToKeysym(tokens[2]);
+    if(sym == NoSymbol){
+        fprintf(stderr, "handle_bind: KeySym not found\n");
+        return;
+    }
+
+    unsigned int modmask = 0;
+    for(int i = 3; i < count; i++){
+        modmask |= parse_mod(tokens[i]);
+    }
+
+    bind_key(wm, name, sym, modmask);
 }

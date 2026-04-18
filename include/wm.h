@@ -37,7 +37,13 @@ typedef struct Dock{
 
 typedef struct Arg{
     int i;
-    const char **cparr;
+    char *str;
+    char **cparr;
+    struct{
+        char *name;
+        char* key;
+        unsigned int mod;
+    }bind;
 }Arg;
 
 typedef enum Direction{
@@ -163,5 +169,7 @@ void init_workspaces(WM *wm);
 void switch_workspace(WM *wm, const Arg *arg);
 
 void switch_cli_ws(WM *wm, const Arg *arg);
+
+void spawn(WM *wm, const Arg *arg);
 
 #endif

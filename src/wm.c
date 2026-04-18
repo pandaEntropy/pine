@@ -1133,3 +1133,15 @@ void switch_cli_ws(WM *wm, const Arg *arg){
 
     focus(wm, c);
 }
+
+void spawn(WM *wm, const Arg *arg){
+    (void)wm;
+    if(fork() == 0){
+        setsid(); // Create a new session for the child
+        execvp(arg->cparr[0], (char *const *)arg->cparr);
+
+        //If child fails
+        perror("execvp failed");
+        _exit(1); // A safe way to terminate the forked child
+    }
+}

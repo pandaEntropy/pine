@@ -46,6 +46,7 @@ void ipc_init(){
     fcntl(wmfd, F_SETFD, FD_CLOEXEC);
 }
 
+/* TODO Fix this
 void ipc_handle(WM *wm){
     int client;
     char buf[IPC_BUFSIZE];
@@ -55,7 +56,6 @@ void ipc_handle(WM *wm){
         ssize_t n = read(client, buf, sizeof(buf) - 1);
         if(n > 0){
             dispatch_command(wm, buf);
-            write(client, "ok\n", 3);
         }
         close(client);
     }
@@ -64,3 +64,4 @@ void ipc_handle(WM *wm){
         perror("accept");
     }
 }
+*/

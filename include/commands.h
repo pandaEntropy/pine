@@ -3,6 +3,14 @@
 
 #include "forward.h"
 
-void dispatch_command(WM *wm, const char *cmd);
+typedef struct{
+    char *name;
+    int min_args;
+    void (*exec)(WM *wm, char **tokens, int count);
+}Command;
+
+void handle_bind(WM *wm, char **tokens, int count);
+
+Command *find_cmd(char *name);
 
 #endif
