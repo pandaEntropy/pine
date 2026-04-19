@@ -9,8 +9,6 @@ typedef struct{
     void (*exec)(WM *wm, char **tokens, int count);
 }Command;
 
-void handle_bind(WM *wm, char **tokens, int count);
-
 Command *find_cmd(char *name);
 
 #endif

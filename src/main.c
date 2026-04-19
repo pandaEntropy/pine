@@ -92,6 +92,7 @@ int main(void)
     update_net_current_desktop(&wm);
     init_workspaces(&wm);
 
+    init_config(&wm); //initializes the default config
     load_config(&wm, "/home/ilya/.config/moss/moss.conf");
 
     XSync(wm.dpy, False);
@@ -114,7 +115,7 @@ int main(void)
         }
 
         if(FD_ISSET(wmfd, &fds)){
-            //ipc_handle(&wm); TODO fix
+            ipc_handle(&wm);
             XFlush(wm.dpy);
         }
 

@@ -5,4 +5,8 @@
 
 void load_config(WM *wm, char *path);
 
+int tokenize(char *line, char **tokens);
+
+void interpret_tokens(WM *wm, char **tokens);
+
 #endif

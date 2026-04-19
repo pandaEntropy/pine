@@ -6,8 +6,8 @@
 #include <stdio.h>
 #include <errno.h>
 
-#include "commands.h"
 #include "ipc.h" 
+#include "config.h"
 
 #define IPC_PATH "/tmp/wm.sock"
 #define IPC_BUFSIZE 128
@@ -46,16 +46,22 @@ void ipc_init(){
     fcntl(wmfd, F_SETFD, FD_CLOEXEC);
 }
 
-/* TODO Fix this
 void ipc_handle(WM *wm){
     int client;
     char buf[IPC_BUFSIZE];
 
+    char *tokens[16];
     while((client = accept(wmfd, NULL, NULL)) >= 0){
         fcntl(client, F_SETFD, FD_CLOEXEC);
+
         ssize_t n = read(client, buf, sizeof(buf) - 1);
         if(n > 0){
-            dispatch_command(wm, buf);
+            buf[n] = '\0';
+            int count = 0;
+            count = tokenize(buf, tokens);
+            if(count > 0){
+                interpret_tokens(wm, tokens);
+            }
         }
         close(client);
     }
@@ -64,4 +70,3 @@ void ipc_handle(WM *wm){
         perror("accept");
     }
 }
-*/

@@ -9,8 +9,6 @@
 
 int ntiled = 0;
 
-int border_width = 4;
-
 typedef struct{
     int width;
     int height;
@@ -19,9 +17,7 @@ typedef struct{
 }Rect;
 
 typedef struct LayoutTarget{
-    Client *client;
-    Rect geom;
-}LayoutTarget;
+    Client *client; Rect geom; }LayoutTarget;
 
 void moveresize_window(WM *wm, Client *c, unsigned int width, unsigned int height, int x, int y);
 
@@ -259,6 +255,8 @@ void screen_center(WM *wm, Client *c){
 }
 
 void moveresize_window(WM *wm, Client *c, unsigned int width, unsigned int height, int x, int y){
+    int border_width = wm->config.border_width;
+
     if(c->parent){
         XMoveResizeWindow(wm->dpy, c->parent, x, y, width - 2 * border_width, height - 2 * border_width);
         XMoveResizeWindow(wm->dpy, c->win, 0, 0, width - 2 * border_width, height - 2 * border_width);

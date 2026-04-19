@@ -4,8 +4,6 @@
 #include "forward.h"
 #include <X11/Xlib.h>
 
-extern int border_width;
-
 typedef enum{
     MASTER_LEFT,
     MASTER_TOP,

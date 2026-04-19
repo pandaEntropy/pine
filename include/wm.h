@@ -99,6 +99,12 @@ typedef struct Workspace{
     Client *focused;
 }Workspace;
 
+typedef struct Config{
+    int border_width; //TODO later add an option to disable borders
+    unsigned long active_border_color;
+    unsigned long inactive_border_color;
+}Config;
+
 typedef struct WM{
     Display *dpy;
     Window root;
@@ -122,6 +128,8 @@ typedef struct WM{
     Atoms atoms;
 
     Layout layouts[8];
+
+    Config config;
 }WM;
 
 void handle_XEvent(WM *wm, XEvent *ev);
@@ -171,5 +179,7 @@ void switch_workspace(WM *wm, const Arg *arg);
 void switch_cli_ws(WM *wm, const Arg *arg);
 
 void spawn(WM *wm, const Arg *arg);
+
+void init_config(WM *wm);
 
 #endif

@@ -82,11 +82,6 @@ void handle_net_close_window_msg(WM *wm, XClientMessageEvent *cm);
 
 bool subwin_unmapped = false;
 
-unsigned long active_color = 0x3399FF;
-
-unsigned long inactive_color = 0x444444;
-
-
 static Dock docks[4];
 static int ndocks = 0;
 
@@ -429,7 +424,7 @@ void focus(WM *wm, Client *c){
     }
 
     if(wm->workspaces[wm->current_ws].focused)
-        XSetWindowBorder(wm->dpy, wm->workspaces[wm->current_ws].focused->parent, inactive_color);
+        XSetWindowBorder(wm->dpy, wm->workspaces[wm->current_ws].focused->parent, wm->config.inactive_border_color);
 
     wm->workspaces[wm->current_ws].focused = c;
 
@@ -455,7 +450,7 @@ void focus(WM *wm, Client *c){
 
     XChangeProperty(wm->dpy, wm->root, wm->atoms.net_active_window, XA_WINDOW, 32, PropModeReplace, (unsigned char *)&c->win, 1);
 
-    XSetWindowBorder(wm->dpy, wm->workspaces[wm->current_ws].focused->parent, active_color);
+    XSetWindowBorder(wm->dpy, wm->workspaces[wm->current_ws].focused->parent, wm->config.active_border_color);
 }
 
 void set_master(WM *wm, const Arg *arg){
@@ -968,7 +963,7 @@ void reparent(WM *wm, Client *c){
         0, 0,
         ca.width, 
         ca.height,
-        border_width,
+        wm->config.border_width,
         CopyFromParent,
         InputOutput,
         CopyFromParent,
@@ -1144,4 +1139,10 @@ void spawn(WM *wm, const Arg *arg){
         perror("execvp failed");
         _exit(1); // A safe way to terminate the forked child
     }
+}
+
+void init_config(WM *wm){
+    wm->config.active_border_color = 0x4488FF;
+    wm->config.inactive_border_color = 0x71797E;
+    wm->config.border_width = 4;
 }
