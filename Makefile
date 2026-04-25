@@ -1,4 +1,4 @@
-BINARY=main
+BINARY=moss
 CODEDIRS=src
 INCDIRS=include
 BAR=bar/bar

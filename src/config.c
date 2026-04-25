@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <string.h>
+#include <X11/Xlib.h>
 
 #include "commands.h"
+#include "layout.h"
 #include "wm.h"
 
 #define MAX_TOK 16
@@ -51,4 +53,22 @@ void load_config(WM *wm, char *path){
     }
 
     fclose(file);
+}
+
+void reload_config(WM *wm, Arg *arg){
+    load_config(wm, arg->str);
+
+    for(Client *c = wm->clients; c; c = c->next){
+        if(c == wm->workspaces[wm->current_ws].focused){
+            XSetWindowBorder(wm->dpy, c->parent, wm->config.active_border_color);
+        }
+        else if(c->wtags & wm->current_wtag){
+            XSetWindowBorder(wm->dpy, c->parent, wm->config.inactive_border_color);
+        }
+
+        if(c->parent) 
+            XSetWindowBorderWidth(wm->dpy, c->parent, wm->config.border_width);
+    }
+
+    tile(wm);
 }

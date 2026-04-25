@@ -27,7 +27,7 @@ int general_handler(Display *dpy, XErrorEvent *ev){
     char buf[256];
     XGetErrorText(dpy, ev->error_code, buf, sizeof(buf));
 
-    fprintf(stderr, "X Error: %s (request = %d)\n", buf, ev->request_code);
+    fprintf(stderr, "XError: %s (request = %d)\n", buf, ev->request_code);
 
     return 0;
 }
@@ -61,8 +61,7 @@ int main(void)
 
     XSetErrorHandler(general_handler);
 
-    //disables focus on hover
-    XSetInputFocus(wm.dpy, None, RevertToParent, CurrentTime);
+    XSetInputFocus(wm.dpy, wm.root, RevertToParent, CurrentTime);
 
     key_setup(wm.dpy); //grabs all the necessary keys
 

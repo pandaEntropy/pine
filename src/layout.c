@@ -264,6 +264,5 @@ void moveresize_window(WM *wm, Client *c, unsigned int width, unsigned int heigh
     else
         XMoveResizeWindow(wm->dpy, c->win, x, y, width, height);
 
-
     send_conf_req(wm, c, width, height, x, y);
 }

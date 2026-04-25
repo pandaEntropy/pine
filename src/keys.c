@@ -1,6 +1,7 @@
 #include "keys.h"
 #include "wm.h"
 #include "layout.h"
+#include "config.h"
 
 #include <X11/keysym.h>
 #include <X11/Xlib.h>
@@ -29,7 +30,7 @@ Key keys[] = {
     {"focus_right", XK_l, Mod1Mask, cmd_focus, {.i = DIR_RIGHT}},
     {"focus_up", XK_k, Mod1Mask, cmd_focus, {.i = DIR_UP}},
     {"focus_down", XK_j, Mod1Mask, cmd_focus, {.i = DIR_DOWN}},
-    {"spawn", XK_Return, Mod1Mask, spawn, {.cparr = termcmd}}, //TODO revise spawning
+    {"spawn", XK_Return, Mod1Mask, spawn, {.cparr = termcmd}},
     {"rotate", XK_r, Mod1Mask, rotate, {0}},
     {"unmap", XK_d, Mod1Mask, unmap, {0}},
     {"kill_window", XK_x, Mod1Mask, cmd_kill, {0}},
@@ -49,7 +50,8 @@ Key keys[] = {
     {"switch_cli_ws", XK_6, Mod1Mask | ControlMask, switch_cli_ws, {.i = 5}},
     {"switch_cli_ws", XK_7, Mod1Mask | ControlMask, switch_cli_ws, {.i = 6}},
     {"switch_cli_ws", XK_8, Mod1Mask | ControlMask, switch_cli_ws, {.i = 7}},
-    {"switch_cli_ws", XK_9, Mod1Mask | ControlMask, switch_cli_ws, {.i = 8}}
+    {"switch_cli_ws", XK_9, Mod1Mask | ControlMask, switch_cli_ws, {.i = 8}},
+    {"reload_config", XK_q, Mod1Mask, reload_config, {.str = "/home/ilya/.config/moss/moss.conf"}}
 };
 
 ModMap mod_map[] = {
@@ -80,7 +82,6 @@ void handle_keypress(WM *wm, XKeyEvent *ev){
 }
 
 void bind_key(WM *wm, char *name, KeySym sym, unsigned int modmask){
-    printf("%s\n", name);
     for(int i = 0; i < (sizeof(keys) / sizeof(Key)); i++){
         if(strcmp(name, keys[i].name) == 0){
             keys[i].keysym = sym;

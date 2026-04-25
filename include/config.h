@@ -9,4 +9,6 @@ int tokenize(char *line, char **tokens);
 
 void interpret_tokens(WM *wm, char **tokens);
 
+void reload_config(WM *wm, const Arg *arg);
+
 #endif

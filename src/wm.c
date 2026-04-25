@@ -80,6 +80,8 @@ Dock *win_in_docks(Window win);
 
 void handle_net_close_window_msg(WM *wm, XClientMessageEvent *cm);
 
+void set_net_active_window(WM *wm, Window win);
+
 bool subwin_unmapped = false;
 
 static Dock docks[4];
@@ -260,14 +262,16 @@ void unmap(WM *wm, const Arg *arg){
 
     if(subwin_unmapped == false){
         XSetInputFocus(wm->dpy, wm->root, RevertToNone, CurrentTime);
-        Window win = None;
-        XChangeProperty(wm->dpy, wm->root, wm->atoms.net_active_window, XA_WINDOW, 32, PropModeReplace, (unsigned char *)&win, 1);
-        XUnmapSubwindows(wm->dpy, wm->root);
+        set_net_active_window(wm, None);
+        for(Client *c = wm->clients; c; c = c->next){
+            XUnmapWindow(wm->dpy, c->win);
+            XUnmapWindow(wm->dpy, c->parent);
+        }
         subwin_unmapped = true;
     }
     else{
-        XMapSubwindows(wm->dpy, wm->root);
-        focus(wm, wm->workspaces[wm->current_ws].focused); // to revert focus on X state and update net active window
+        tile(wm);
+        focus(wm, wm->workspaces[wm->current_ws].focused);
         subwin_unmapped = false;
     }
 }
@@ -411,6 +415,13 @@ void unmanage(WM *wm, Window win){
 
     unparent(wm, c);
 
+    if(!wm->workspaces[wm->current_ws].focused){
+        set_net_active_window(wm, None);
+    }
+    else{
+        set_net_active_window(wm, wm->workspaces[wm->current_ws].focused->win);
+    }
+
     tile(wm);
     free(c);
 }
@@ -418,10 +429,7 @@ void unmanage(WM *wm, Window win){
 void focus(WM *wm, Client *c){
     if(!c) return;
 
-    if(!(c->wtags & wm->current_wtag)){
-        printf("returned from focus\n");
-        return;
-    }
+    if(!(c->wtags & wm->current_wtag)) return;
 
     if(wm->workspaces[wm->current_ws].focused)
         XSetWindowBorder(wm->dpy, wm->workspaces[wm->current_ws].focused->parent, wm->config.inactive_border_color);
@@ -438,19 +446,18 @@ void focus(WM *wm, Client *c){
         ev.xclient.data.l[0] = wm->atoms.wm_take_focus;
         ev.xclient.data.l[1] = CurrentTime;
 
-        XSendEvent(
-            wm->dpy,
-            c->win,
-            False,
-            NoEventMask,
-            &ev);
+        XSendEvent(wm->dpy, c->win, False, NoEventMask, &ev);
     }
 
     XSetInputFocus(wm->dpy, c->win, RevertToParent, CurrentTime);
 
-    XChangeProperty(wm->dpy, wm->root, wm->atoms.net_active_window, XA_WINDOW, 32, PropModeReplace, (unsigned char *)&c->win, 1);
+    set_net_active_window(wm, c->win);
 
     XSetWindowBorder(wm->dpy, wm->workspaces[wm->current_ws].focused->parent, wm->config.active_border_color);
+
+    XRaiseWindow(wm->dpy, c->win);
+    if(c->parent) XRaiseWindow(wm->dpy, c->parent);
+
 }
 
 void set_master(WM *wm, const Arg *arg){
@@ -1091,8 +1098,13 @@ void switch_workspace(WM *wm, const Arg *arg){
 
     tile(wm);
 
-    if(wm->workspaces[wm->current_ws].focused)
+    if(wm->workspaces[wm->current_ws].focused){
         focus(wm, wm->workspaces[wm->current_ws].focused);
+    }
+    else{
+        XSetInputFocus(wm->dpy, wm->root, RevertToNone, CurrentTime);
+        set_net_active_window(wm, None);
+    }
 }
 
 void switch_cli_ws(WM *wm, const Arg *arg){
@@ -1145,4 +1157,8 @@ void init_config(WM *wm){
     wm->config.active_border_color = 0x4488FF;
     wm->config.inactive_border_color = 0x71797E;
     wm->config.border_width = 4;
+}
+
+void set_net_active_window(WM *wm, Window win){
+    XChangeProperty(wm->dpy, wm->root, wm->atoms.net_active_window, XA_WINDOW, 32, PropModeReplace, (unsigned char *)&win, 1);
 }
