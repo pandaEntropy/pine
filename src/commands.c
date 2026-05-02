@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-#include "wm.h"
+#include "pine.h"
 #include "commands.h"
 #include "layout.h"
 #include "config.h"

@@ -3,8 +3,7 @@
 #include <X11/Xlib.h>
 
 #include "commands.h"
-#include "layout.h"
-#include "wm.h"
+#include "pine.h"
 
 #define MAX_TOK 16
 

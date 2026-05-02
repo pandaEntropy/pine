@@ -9,7 +9,7 @@
 #include <string.h>
 #include <X11/Xatom.h>
 
-#include "wm.h"
+#include "pine.h"
 #include "layout.h"
 #include "forward.h"
 
@@ -1125,7 +1125,7 @@ void init_config(WM *wm){
     wm->config.active_border_color = 0x4488FF;
     wm->config.inactive_border_color = 0x71797E;
     wm->config.border_width = 4;
-    wm->config.conf_addr = "/home/ilya/.config/moss/moss.conf";
+    wm->config.conf_addr = "/home/ilya/.config/pine/pine.conf";
 }
 
 void set_net_active_window(WM *wm, Window win){

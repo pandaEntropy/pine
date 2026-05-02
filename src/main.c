@@ -5,7 +5,7 @@
 #include <errno.h>
 #include <stdio.h>
 
-#include "wm.h"
+#include "pine.h"
 #include "ipc.h"
 #include "config.h"
 

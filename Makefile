@@ -1,4 +1,4 @@
-BINARY=moss
+BINARY=pine
 CODEDIRS=src
 INCDIRS=include
 BAR=bar/bar

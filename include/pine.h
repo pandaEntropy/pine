@@ -1,5 +1,5 @@
-#ifndef MYWM_H
-#define MYWM_H
+#ifndef PINE_H
+#define PINE_H
 
 #include <X11/Xlib.h>
 #include <stdbool.h>

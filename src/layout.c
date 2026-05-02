@@ -1,4 +1,4 @@
-#include "wm.h"
+#include "pine.h"
 #include "layout.h"
 
 #include <X11/Xlib.h>
