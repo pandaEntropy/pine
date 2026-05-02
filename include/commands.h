@@ -11,4 +11,6 @@ typedef struct{
 
 Command *find_cmd(char *name);
 
+void refresh_state(WM *wm);
+
 #endif

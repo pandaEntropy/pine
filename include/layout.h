@@ -23,15 +23,13 @@ void master_tile(WM *wm, LayoutTarget *targets);
 
 void monocle_tile(WM *wm, LayoutTarget *targets);
 
-void rotate(WM *wm, const Arg *arg);
-
 void master_rotate(WM *wm);
 
 void monocle_rotate(WM *wm);
 
 void horizontal_rotate(WM *wm);
 
-void resize(WM *wm, const Arg *arg);
+void resize(WM *wm, int dir);
 
 void parent_center(WM *wm, Window parent, Client *c);
 

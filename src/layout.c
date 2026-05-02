@@ -167,10 +167,9 @@ void monocle_tile(WM *wm, LayoutTarget *targets){
     }
 }
 
-void resize(WM *wm, const Arg *arg){
+void resize(WM *wm, int dir){
     if(wm->workspaces[wm->current_ws].layout->id != LAYOUT_MASTER) return;
 
-    int dir = arg->i;
     float change = 0;
 
     if(ntiled < 2)
@@ -205,15 +204,10 @@ void resize(WM *wm, const Arg *arg){
     tile(wm);
 }
 
-void rotate(WM *wm, const Arg *arg){
-    (void)arg;
-    if(ntiled < 2) return;
-
-    wm->workspaces[wm->current_ws].layout->rotate(wm);
-}
-
 void master_rotate(WM *wm){
-    //Cycle the enum
+    if(ntiled < 2)
+        return;
+
     wm->workspaces[wm->current_ws].master_pos = (wm->workspaces[wm->current_ws].master_pos+1) % 4;
     tile(wm);
 }

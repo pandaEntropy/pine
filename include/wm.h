@@ -103,6 +103,7 @@ typedef struct Config{
     int border_width; //TODO later add an option to disable borders
     unsigned long active_border_color;
     unsigned long inactive_border_color;
+    char *conf_addr;
 }Config;
 
 typedef struct WM{
@@ -114,8 +115,6 @@ typedef struct WM{
     Client *clients;
     Client *tail;
     int nclients;
-    int usable_height;
-    int usable_width;
 
     Workspace workspaces[9];
     int current_ws;
@@ -124,6 +123,8 @@ typedef struct WM{
     //first usable point from the origin
     int usable_x; 
     int usable_y;
+    int usable_height;
+    int usable_width;
 
     Atoms atoms;
 
@@ -132,17 +133,22 @@ typedef struct WM{
     Config config;
 }WM;
 
+//TODO remove, this is legacy
+void cmd_kill(WM *wm, const Arg *arg);
+
+
+
 void handle_XEvent(WM *wm, XEvent *ev);
 
 void focus(WM *wm, Client *c);
 
 void focus_direction(WM *wm, int dir);
 
-void unmap(WM *wm, const Arg *arg);
+void unmap(WM *wm);
 
-void cmd_kill(WM *wm, const Arg *arg);
+void kill_client(WM *wm, Client *c);
 
-void set_master(WM *wm, const Arg *arg);
+void set_master(WM *wm);
 
 Client *win_in_clients(WM *wm, Window win);
 
@@ -156,11 +162,9 @@ void init_atoms(WM *wm);
 
 void monocle_focus(WM *wm, int dir);
 
-void cmd_focus(WM *wm, const Arg *arg);
-
 void init_layouts(WM *wm);
 
-void switch_layout(WM *wm, const Arg *arg);
+void cycle_layout(WM *wm);
 
 void initset_net_supported(WM *wm);
 
@@ -174,9 +178,9 @@ void send_conf_req(WM *wm, Client *c, int width, int height, int x, int y);
 
 void init_workspaces(WM *wm);
 
-void switch_workspace(WM *wm, const Arg *arg);
+void switch_workspace(WM *wm, int dir);
 
-void switch_cli_ws(WM *wm, const Arg *arg);
+void move_cli_ws(WM *wm, int index);
 
 void spawn(WM *wm, const Arg *arg);
 

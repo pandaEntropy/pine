@@ -11,11 +11,11 @@
 int tokenize(char *line, char **tokens){
     int count = 0;
 
-    char *token = strtok(line, " \t\n");
+    char *token = strtok(line, " \t\n\0");
     while(token && count < MAX_TOK){
         tokens[count] = token;
         count++;
-        token = strtok(NULL, " \t\n");
+        token = strtok(NULL, " \t\n\0");
     }
 
     return count;
@@ -55,20 +55,8 @@ void load_config(WM *wm, char *path){
     fclose(file);
 }
 
-void reload_config(WM *wm, Arg *arg){
-    load_config(wm, arg->str);
+void reload_config(WM *wm){
+    load_config(wm, wm->config.conf_addr);
 
-    for(Client *c = wm->clients; c; c = c->next){
-        if(c == wm->workspaces[wm->current_ws].focused){
-            XSetWindowBorder(wm->dpy, c->parent, wm->config.active_border_color);
-        }
-        else if(c->wtags & wm->current_wtag){
-            XSetWindowBorder(wm->dpy, c->parent, wm->config.inactive_border_color);
-        }
-
-        if(c->parent) 
-            XSetWindowBorderWidth(wm->dpy, c->parent, wm->config.border_width);
-    }
-
-    tile(wm);
+    refresh_state(wm);
 }

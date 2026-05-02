@@ -11,7 +11,6 @@
 
 #include "wm.h"
 #include "layout.h"
-#include "keys.h"
 #include "forward.h"
 
 #define MAX_DOCKS 8
@@ -46,8 +45,6 @@ void OnMapRequest(WM *wm, XMapRequestEvent *ev);
 
 void OnConfigureRequest(WM *wm, XConfigureRequestEvent *ev);
 
-void OnKeyPress(WM *wm, XKeyEvent *ev);
-
 void OnDestroyNotify(WM *wm, XDestroyWindowEvent *ev);
 
 void OnPropertyNotify(WM *wm, XPropertyEvent *ev);
@@ -67,8 +64,6 @@ void update_net_workarea(WM *wm);
 void reparent(WM *wm, Client *c);
 
 void unparent(WM *wm, Client *c);
-
-void kill_client(WM *wm, Client *c);
 
 void handle_buttonpress(WM *wm, XButtonEvent *ev);
 
@@ -114,10 +109,6 @@ void OnDestroyNotify(WM *wm, XDestroyWindowEvent *ev){
     unmanage(wm, ev->window);
 }
 
-void OnKeyPress(WM *wm, XKeyEvent *ev){
-    handle_keypress(wm, ev);
-}
-
 void OnButtonPress(WM *wm, XButtonEvent *ev){
     handle_buttonpress(wm, ev);
 }
@@ -128,10 +119,6 @@ void OnPropertyNotify(WM *wm, XPropertyEvent *ev){
 
 void handle_XEvent(WM *wm, XEvent *ev){
     switch(ev->type){
-        case KeyPress:
-            OnKeyPress(wm, &ev->xkey);
-            break;
-
         case ButtonPress:
             OnButtonPress(wm, &ev->xbutton);    
             break;
@@ -158,20 +145,7 @@ void handle_XEvent(WM *wm, XEvent *ev){
     }
 }
 
-void cmd_focus(WM *wm, const Arg *arg){
-    wm->workspaces[wm->current_ws].layout->focus(wm, arg->i);
-
-    if(wm->workspaces[wm->current_ws].layout->id == LAYOUT_MONOCLE){
-        tile(wm);
-    }
-}
-
 void focus_direction(WM *wm, int dir) {
-    if (!wm->workspaces[wm->current_ws].focused){
-        printf("failed focus dir check\n");
-        return;
-    }
-
     Client *best = NULL;
     int bestdist = INT_MAX;
 
@@ -254,10 +228,11 @@ void monocle_focus(WM *wm, int dir){
             focus(wm, wm->tail);
 
     }
+
+    tile(wm);
 }
 
-void unmap(WM *wm, const Arg *arg){
-    (void)arg;
+void unmap(WM *wm){
     if(wm->nclients < 1) return;
 
     if(subwin_unmapped == false){
@@ -276,9 +251,8 @@ void unmap(WM *wm, const Arg *arg){
     }
 }
 
+//TODO remove this after new system stabilizes
 void cmd_kill(WM *wm, const Arg *arg){
-    (void)arg;
-
     if(!wm->workspaces[wm->current_ws].focused) return;
 
     kill_client(wm, wm->workspaces[wm->current_ws].focused);
@@ -460,9 +434,7 @@ void focus(WM *wm, Client *c){
 
 }
 
-void set_master(WM *wm, const Arg *arg){
-    (void)arg;
-
+void set_master(WM *wm){
     if(!wm->clients) return;
 
     Workspace *ws = &wm->workspaces[wm->current_ws];
@@ -776,8 +748,7 @@ void init_layouts(WM *wm){
     wm->layouts[LAYOUT_MONOCLE] = monocle_layout();
 }
 
-void switch_layout(WM *wm, const Arg *arg){
-    (void)arg;
+void cycle_layout(WM *wm){
     Workspace *ws = &wm->workspaces[wm->current_ws];
 
     ws->layout_id = (ws->layout_id + 1) % 2; // 2 is the num of layouts
@@ -1082,9 +1053,7 @@ void init_workspaces(WM *wm){
     wm->current_wtag = Tag(wm->current_ws);
 }
 
-void switch_workspace(WM *wm, const Arg *arg){
-    int dir = arg->i;
-
+void switch_workspace(WM *wm, int dir){
     if(dir == DIR_RIGHT){
         wm->current_ws = (wm->current_ws + 1) % MAX_WS;
     }
@@ -1107,8 +1076,7 @@ void switch_workspace(WM *wm, const Arg *arg){
     }
 }
 
-void switch_cli_ws(WM *wm, const Arg *arg){
-    int index = arg->i;
+void move_cli_ws(WM *wm, int index){
     if(MAX_WS - 1 < index || index < 0) return;
 
     Client *c = wm->workspaces[wm->current_ws].focused;
@@ -1157,6 +1125,7 @@ void init_config(WM *wm){
     wm->config.active_border_color = 0x4488FF;
     wm->config.inactive_border_color = 0x71797E;
     wm->config.border_width = 4;
+    wm->config.conf_addr = "/home/ilya/.config/moss/moss.conf";
 }
 
 void set_net_active_window(WM *wm, Window win){

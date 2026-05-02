@@ -1,7 +1,6 @@
 moss
 *.o
 .clangd
-wmctl
-wmctl.c
+pinemsg
 bar/
 *.d

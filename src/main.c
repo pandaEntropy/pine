@@ -6,7 +6,6 @@
 #include <stdio.h>
 
 #include "wm.h"
-#include "keys.h"
 #include "ipc.h"
 #include "config.h"
 
@@ -62,8 +61,6 @@ int main(void)
     XSetErrorHandler(general_handler);
 
     XSetInputFocus(wm.dpy, wm.root, RevertToParent, CurrentTime);
-
-    key_setup(wm.dpy); //grabs all the necessary keys
 
     XGrabButton(wm.dpy, 1, Mod1Mask, wm.root, True,
             ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);

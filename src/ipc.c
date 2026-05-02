@@ -57,10 +57,9 @@ void ipc_handle(WM *wm){
         ssize_t n = read(client, buf, sizeof(buf) - 1);
         if(n > 0){
             buf[n] = '\0';
-            int count = 0;
-            count = tokenize(buf, tokens);
+            int count = tokenize(buf, tokens);
             if(count > 0){
-                interpret_tokens(wm, tokens);
+                interpret_tokens(wm, tokens, count);
             }
         }
         close(client);
