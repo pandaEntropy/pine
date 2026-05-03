@@ -244,8 +244,12 @@ void screen_center(WM *wm, Client *c){
     if(x < 0) x = 0;
     if(y < 0) y = 0;
 
-    if(c->wtags & wm->current_wtag)
+    if(c->wtags & wm->current_wtag){
         moveresize_window(wm, c, cattr.width, cattr.height, x, y);
+    }
+
+    XMapWindow(wm->dpy, c->parent);
+    XMapWindow(wm->dpy, c->win);
 }
 
 void moveresize_window(WM *wm, Client *c, unsigned int width, unsigned int height, int x, int y){

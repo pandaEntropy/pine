@@ -3,7 +3,7 @@
 
 #include "forward.h"
 
-void load_config(WM *wm, char *path);
+void load_config(WM *wm);
 
 int tokenize(char *line, char **tokens);
 

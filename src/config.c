@@ -4,6 +4,7 @@
 
 #include "commands.h"
 #include "pine.h"
+#include "config.h"
 
 #define MAX_TOK 16
 
@@ -34,8 +35,8 @@ void interpret_tokens(WM *wm, char **tokens, int count){
     cmd->exec(wm, tokens, count);
 }
 
-void load_config(WM *wm, char *path){
-    FILE *file = fopen(path, "r");
+void load_config(WM *wm){
+    FILE *file = fopen(wm->config.conf_addr, "r");
     if(!file){
         perror("fopen");
         return;
@@ -55,7 +56,7 @@ void load_config(WM *wm, char *path){
 }
 
 void reload_config(WM *wm){
-    load_config(wm, wm->config.conf_addr);
+    load_config(wm);
 
     refresh_state(wm);
 }

@@ -116,11 +116,16 @@ void OnButtonPress(WM *wm, XButtonEvent *ev){
 void OnPropertyNotify(WM *wm, XPropertyEvent *ev){
     handle_property_notify(wm, ev);
 }
+void OnUnmapNotify(WM *wm, XUnmapEvent *ev){
+    if (ev->event != wm->root) return;
+
+    unmanage(wm, ev->window);
+}
 
 void handle_XEvent(WM *wm, XEvent *ev){
     switch(ev->type){
         case ButtonPress:
-            OnButtonPress(wm, &ev->xbutton);    
+            OnButtonPress(wm, &ev->xbutton);
             break;
 
         case ConfigureRequest:
@@ -141,6 +146,10 @@ void handle_XEvent(WM *wm, XEvent *ev){
 
         case PropertyNotify:
             OnPropertyNotify(wm, &ev->xproperty);
+            break;
+
+        case UnmapNotify:
+            OnUnmapNotify(wm, &ev->xunmap);
             break;
     }
 }
@@ -251,13 +260,6 @@ void unmap(WM *wm){
     }
 }
 
-//TODO remove this after new system stabilizes
-void cmd_kill(WM *wm, const Arg *arg){
-    if(!wm->workspaces[wm->current_ws].focused) return;
-
-    kill_client(wm, wm->workspaces[wm->current_ws].focused);
-}
-
 void kill_client(WM *wm, Client *c){
     if(!c) return;
     if(!(c->wtags & wm->current_wtag)) return;
@@ -282,6 +284,9 @@ void kill_client(WM *wm, Client *c){
 }
 
 void manage(WM *wm, Window win){
+    if(win_in_clients(wm, win))
+        return;
+
     Wintype type = classify_window(wm, win);
 
     if(type == WIN_DOCK){
@@ -317,21 +322,18 @@ void manage(WM *wm, Window win){
         c->floating = true;
     }
 
-    if(c->floating){
-        Window parent = get_transient(wm, win);
-        if(parent) parent_center(wm, parent, c);
-        else screen_center(wm, c);
-    }
-
     update_net_clients(wm);
 
-    if(!c->floating) 
-        reparent(wm, c);
+    reparent(wm, c);
 
     XAddToSaveSet(wm->dpy, c->win);
 
     if(!c->floating){
         tile(wm);
+    }
+
+    if(c->floating){
+        screen_center(wm, c);
     }
 
     focus(wm, c);
@@ -427,7 +429,8 @@ void focus(WM *wm, Client *c){
 
     set_net_active_window(wm, c->win);
 
-    XSetWindowBorder(wm->dpy, wm->workspaces[wm->current_ws].focused->parent, wm->config.active_border_color);
+    if(c->parent)
+        XSetWindowBorder(wm->dpy, wm->workspaces[wm->current_ws].focused->parent, wm->config.active_border_color);
 
     XRaiseWindow(wm->dpy, c->win);
     if(c->parent) XRaiseWindow(wm->dpy, c->parent);
@@ -927,13 +930,14 @@ void set_net_supp_wm_check(WM *wm){
 }
 
 void reparent(WM *wm, Client *c){
-    if(c->floating) return;
-
     XWindowAttributes ca;
     XGetWindowAttributes(wm->dpy, c->win, &ca);
 
     XSetWindowAttributes attrs;
     attrs.override_redirect = True;
+    attrs.colormap = ca.colormap;
+    attrs.background_pixel = 0; 
+    attrs.border_pixel = 0;
 
     Window parent = XCreateWindow(
         wm->dpy,
@@ -942,10 +946,10 @@ void reparent(WM *wm, Client *c){
         ca.width, 
         ca.height,
         wm->config.border_width,
-        CopyFromParent,
+        ca.depth,
         InputOutput,
-        CopyFromParent,
-        CWOverrideRedirect,
+        ca.visual,
+        CWOverrideRedirect | CWColormap | CWBackPixel | CWBorderPixel,
         &attrs);
 
     XReparentWindow(wm->dpy, c->win, parent, 0, 0);
@@ -963,11 +967,11 @@ void reparent(WM *wm, Client *c){
             None,
             None);
 
-    XSelectInput(wm->dpy, c->win, StructureNotifyMask);
+    XSelectInput(wm->dpy, c->parent, ExposureMask | SubstructureNotifyMask);
 }
 
 void unparent(WM *wm, Client *c){
-    if(!c->parent || c->floating) return;
+    if(!c->parent) return;
 
     XDestroyWindow(wm->dpy, c->parent);
 }

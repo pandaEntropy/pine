@@ -89,7 +89,7 @@ int main(void)
     init_workspaces(&wm);
 
     init_config(&wm); //initializes the default config
-    load_config(&wm, "/home/ilya/.config/moss/moss.conf");
+    load_config(&wm);
 
     XSync(wm.dpy, False);
 
