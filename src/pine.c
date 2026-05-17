@@ -115,7 +115,7 @@ void OnPropertyNotify(WM *wm, XPropertyEvent *ev){
 }
 
 void OnUnmapNotify(WM *wm, XUnmapEvent *ev){
-    if (ev->event == wm->root){ 
+    if (ev->event != wm->root){ 
         return;
     }
 
