@@ -9,7 +9,6 @@
 
 typedef struct Client{
     Window win;
-    Window parent;
 
     struct Client *next;
     struct Client *prev;

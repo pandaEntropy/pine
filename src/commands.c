@@ -10,14 +10,13 @@
 void refresh_state(WM *wm){
     for(Client *c = wm->clients; c; c = c->next){
         if(c == wm->workspaces[wm->current_ws].focused){
-            XSetWindowBorder(wm->dpy, c->parent, wm->config.active_border_color);
+            XSetWindowBorder(wm->dpy, c->win, wm->config.active_border_color);
         }
         else if(c->wtags & wm->current_wtag){
-            XSetWindowBorder(wm->dpy, c->parent, wm->config.inactive_border_color);
+            XSetWindowBorder(wm->dpy, c->win, wm->config.inactive_border_color);
         }
 
-        if(c->parent) 
-            XSetWindowBorderWidth(wm->dpy, c->parent, wm->config.border_width);
+        XSetWindowBorderWidth(wm->dpy, c->win, wm->config.border_width);
     }
 
     tile(wm);

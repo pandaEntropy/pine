@@ -38,7 +38,6 @@ void tile(WM *wm){
             }
         }
         else{
-            XUnmapWindow(wm->dpy, c->parent);
             XUnmapWindow(wm->dpy, c->win);
         }
     }
@@ -66,7 +65,6 @@ void tile(WM *wm){
 
     for(Client *c = wm->clients; c; c = c->next){
         if(c->wtags & wm->current_wtag){
-            if(c->parent) XMapWindow(wm->dpy, c->parent);
             XMapWindow(wm->dpy, c->win);
         }
     }
@@ -217,14 +215,16 @@ void parent_center(WM *wm, Window parent, Client *c){
     XGetWindowAttributes(wm->dpy, parent, &pattr);
     XGetWindowAttributes(wm->dpy, c->win, &cattr);
 
-    int x = (pattr.width - cattr.width) / 2;
-    int y = (pattr.height - cattr.height) / 2;
+    int x = pattr.x + (pattr.width - cattr.width) / 2;
+    int y = pattr.y + (pattr.height - cattr.height) / 2;
 
     if(x < 0) x = 0;
     if(y < 0) y = 0;
 
-    if(c->wtags & wm->current_wtag)
+    if(c->wtags & wm->current_wtag){
         moveresize_window(wm, c, cattr.width, cattr.height, x, y);
+        XMapWindow(wm->dpy, c->win);
+    }
 }
 
 void screen_center(WM *wm, Client *c){
@@ -242,19 +242,13 @@ void screen_center(WM *wm, Client *c){
         moveresize_window(wm, c, cattr.width, cattr.height, x, y);
     }
 
-    XMapWindow(wm->dpy, c->parent);
     XMapWindow(wm->dpy, c->win);
 }
 
 void moveresize_window(WM *wm, Client *c, unsigned int width, unsigned int height, int x, int y){
     int border_width = wm->config.border_width;
 
-    if(c->parent){
-        XMoveResizeWindow(wm->dpy, c->parent, x, y, width - 2 * border_width, height - 2 * border_width);
-        XMoveResizeWindow(wm->dpy, c->win, 0, 0, width - 2 * border_width, height - 2 * border_width);
-    }
-    else
-        XMoveResizeWindow(wm->dpy, c->win, x, y, width, height);
+    XMoveResizeWindow(wm->dpy, c->win, x, y, width - 2 * border_width, height - 2 * border_width);
 
     send_conf_req(wm, c, width, height, x, y);
 }

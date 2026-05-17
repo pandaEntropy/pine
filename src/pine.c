@@ -160,7 +160,7 @@ void focus_direction(WM *wm, int dir) {
 
 
     XWindowAttributes fa;
-    XGetWindowAttributes(wm->dpy, wm->workspaces[wm->current_ws].focused->parent, &fa);
+    XGetWindowAttributes(wm->dpy, wm->workspaces[wm->current_ws].focused->win, &fa);
 
     //get the center of the focused window
     int fx = fa.x + fa.width / 2;
@@ -171,7 +171,7 @@ void focus_direction(WM *wm, int dir) {
         if(!(c->wtags & wm->current_wtag)) continue;
 
         XWindowAttributes wa;
-        XGetWindowAttributes(wm->dpy, c->parent, &wa);
+        XGetWindowAttributes(wm->dpy, c->win, &wa);
 
         //get the center of the window that we are comparing
         int wx = wa.x + wa.width / 2;
@@ -247,9 +247,7 @@ void unmap(WM *wm){
         XSetInputFocus(wm->dpy, wm->root, RevertToNone, CurrentTime);
         set_net_active_window(wm, None);
         for(Client *c = wm->clients; c; c = c->next){
-            c->ignore_unmaps++;
-            XUnmapWindow(wm->dpy, c->win);
-            XUnmapWindow(wm->dpy, c->parent);
+            XMoveWindow(wm->dpy, c->win, -4000, 0);
         }
         subwin_unmapped = true;
     }
@@ -332,15 +330,15 @@ void manage(WM *wm, Window win){
     set_protocols(wm, c);
     c->wtags = Tag(wm->current_ws);
     c->ignore_unmaps = 0;
-
+    
+    Window parent;
     if(type == WIN_DIALOG || type == WIN_SPLASH || type == WIN_MENU){
         c->floating = true;
+        parent = get_transient(wm, c->win);
         level_log(wm, DEBUG, "floating window %lu registered", win);
     }
 
     update_net_clients(wm);
-
-    reparent(wm, c);
 
     XAddToSaveSet(wm->dpy, c->win);
 
@@ -349,10 +347,15 @@ void manage(WM *wm, Window win){
     }
 
     if(c->floating){
-        screen_center(wm, c);
+        if(parent != None)
+            parent_center(wm, parent, c);
+        else
+            screen_center(wm, c);
     }
 
     level_log(wm, INFO, "new window %lu managed", win);
+
+    XSetWindowBorderWidth(wm->dpy, c->win, wm->config.border_width);
     focus(wm, c);
 }
 
@@ -415,8 +418,6 @@ void unmanage(WM *wm, Window win){
 
     update_net_clients(wm);
 
-    unparent(wm, c);
-
     if(!wm->workspaces[wm->current_ws].focused){
         set_net_active_window(wm, None);
     }
@@ -442,7 +443,7 @@ void focus(WM *wm, Client *c){
     Client *old_focused = wm->workspaces[wm->current_ws].focused;
 
     if(old_focused)
-        XSetWindowBorder(wm->dpy, wm->workspaces[wm->current_ws].focused->parent, wm->config.inactive_border_color);
+        XSetWindowBorder(wm->dpy, wm->workspaces[wm->current_ws].focused->win, wm->config.inactive_border_color);
 
     wm->workspaces[wm->current_ws].focused = c;
 
@@ -463,11 +464,9 @@ void focus(WM *wm, Client *c){
 
     set_net_active_window(wm, c->win);
 
-    if(c->parent)
-        XSetWindowBorder(wm->dpy, wm->workspaces[wm->current_ws].focused->parent, wm->config.active_border_color);
+    XSetWindowBorder(wm->dpy, wm->workspaces[wm->current_ws].focused->win, wm->config.active_border_color);
 
     XRaiseWindow(wm->dpy, c->win);
-    if(c->parent) XRaiseWindow(wm->dpy, c->parent);
 
     if(old_focused)
         level_log(wm, INFO, "focused client %lu from %lu", c->win, old_focused->win);
@@ -982,58 +981,6 @@ void set_net_supp_wm_check(WM *wm){
     );
 }
 
-void reparent(WM *wm, Client *c){
-    XWindowAttributes ca;
-    XGetWindowAttributes(wm->dpy, c->win, &ca);
-
-    XSetWindowAttributes attrs;
-    attrs.override_redirect = True;
-    attrs.colormap = ca.colormap;
-    attrs.background_pixel = 0; 
-    attrs.border_pixel = 0;
-
-    Window parent = XCreateWindow(
-        wm->dpy,
-        wm->root,
-        0, 0,
-        ca.width, 
-        ca.height,
-        wm->config.border_width,
-        ca.depth,
-        InputOutput,
-        ca.visual,
-        CWOverrideRedirect | CWColormap | CWBackPixel | CWBorderPixel,
-        &attrs);
-
-    XReparentWindow(wm->dpy, c->win, parent, 0, 0);
-    c->parent = parent;
-
-    XGrabButton(
-            wm->dpy,
-            Button1,
-            0,
-            c->parent,
-            False,
-            ButtonPressMask,
-            GrabModeSync,
-            GrabModeAsync,
-            None,
-            None);
-
-    XSelectInput(wm->dpy, c->parent, ExposureMask | SubstructureNotifyMask);
-
-    level_log(wm, INFO, "client %lu reparented to frame %lu", c->win, c->parent);
-}
-
-void unparent(WM *wm, Client *c){
-    if(!c->parent){
-        level_log(wm, WARN, "failed to unparent client %lu, client has no frame", c->win);
-        return;
-    }
-
-    XDestroyWindow(wm->dpy, c->parent);
-}
-
 void handle_buttonpress(WM *wm, XButtonEvent *ev){
     //subwindow bc grabs are done on the frame, not the client
     Window win = ev->subwindow;
@@ -1044,7 +991,8 @@ void handle_buttonpress(WM *wm, XButtonEvent *ev){
         return;
     }
 
-    focus(wm, c);
+    if(wm->workspaces[wm->current_ws].focused != c)
+        focus(wm, c);
 
     XAllowEvents(wm->dpy, ReplayPointer, CurrentTime);
 
