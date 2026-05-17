@@ -189,4 +189,8 @@ void init_config(WM *wm);
 
 void level_log(WM *Wm, LogLevel level, char *msg, ...);
 
+void cleanup(WM *wm);
+
+void init_ewmh(WM *wm);
+
 #endif

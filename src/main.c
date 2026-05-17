@@ -4,12 +4,14 @@
 #include <X11/cursorfont.h>
 #include <errno.h>
 #include <stdio.h>
+#include <signal.h>
 
 #include "pine.h"
 #include "ipc.h"
 #include "config.h"
 
 static int startup_err = 0;
+static int running = 1;
 
 int startup_handler(Display *dpy, XErrorEvent *ev){
     (void)dpy;
@@ -28,10 +30,14 @@ int general_handler(Display *dpy, XErrorEvent *ev){
     char buf[256];
     XGetErrorText(dpy, ev->error_code, buf, sizeof(buf));
 
-    fprintf(stderr, "XError: %s\n request=%d minor=%d resource=0x%lx", buf, ev->request_code, ev->minor_code, 
+    fprintf(stderr, "XError: %s\n request=%d minor=%d resource=0x%lx\n", buf, ev->request_code, ev->minor_code, 
             ev->resourceid);
 
     return 0;
+}
+
+void handle_sigterm(int sig){
+    running = 0;
 }
 
 int main(void)
@@ -57,7 +63,7 @@ int main(void)
     XSync(wm.dpy, False);
 
     if(startup_err){
-        level_log(&wm, ERROR, "another client has selected substructure redirect. Closing. ");
+        level_log(&wm, ERROR, "another client has selected substructure redirect, closing...");
         return 1;
     }
 
@@ -65,9 +71,9 @@ int main(void)
 
     XSetInputFocus(wm.dpy, wm.root, RevertToParent, CurrentTime);
 
-    XGrabButton(wm.dpy, 1, Mod1Mask, wm.root, True,
+    XGrabButton(wm.dpy, 1, None, wm.root, True,
             ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
-    XGrabButton(wm.dpy, 3, Mod1Mask, wm.root, True,
+    XGrabButton(wm.dpy, 3, None, wm.root, True,
             ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
 
     //Create and define the cursor
@@ -77,38 +83,33 @@ int main(void)
     //Initialize atoms in the wm struct
     init_atoms(&wm);
 
-    set_net_supp_wm_check(&wm);
-
-    //Set the net supported property on root
-    initset_net_supported(&wm);
-
     wm.usable_height = wm.sh;
     wm.usable_width = wm.sw;
 
     init_layouts(&wm);
 
-    update_net_num_of_desktops(&wm);
-    update_net_current_desktop(&wm);
-    init_workspaces(&wm);
-
-    init_config(&wm); //initializes the default config
+    init_config(&wm);
     load_config(&wm);
+
+    init_ewmh(&wm);
 
     XSync(wm.dpy, False);
 
     ipc_init();
 
-    int xfd = ConnectionNumber(wm.dpy);
+    struct sigaction sa;
+    sa.sa_handler = &handle_sigterm;
+    sigaction(SIGTERM, &sa, NULL);
 
-    for(;;){
+    int xfd = ConnectionNumber(wm.dpy);
+    int range = (xfd > wmfd ? xfd : wmfd) + 1;
+    while(running){
         fd_set fds;
-        FD_ZERO(&fds); //clear the bitmask
+        FD_ZERO(&fds);
         FD_SET(xfd, &fds); 
         FD_SET(wmfd, &fds);
 
-        int maxfd = (xfd > wmfd ? xfd : wmfd) + 1;
-
-        if(select(maxfd, &fds, NULL, NULL, NULL) < 0){
+        if(select(range, &fds, NULL, NULL, NULL) < 0){
             if(errno == EINTR) continue;
             break;
         }
@@ -126,6 +127,6 @@ int main(void)
             }
         }
     }
-    XCloseDisplay(wm.dpy);
-}
 
+    cleanup(&wm);
+}

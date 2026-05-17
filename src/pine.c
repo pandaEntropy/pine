@@ -982,21 +982,15 @@ void set_net_supp_wm_check(WM *wm){
 }
 
 void handle_buttonpress(WM *wm, XButtonEvent *ev){
-    //subwindow bc grabs are done on the frame, not the client
     Window win = ev->subwindow;
     Client *c = win_in_clients(wm, win);
 
     if(!c){
-        XAllowEvents(wm->dpy, ReplayPointer, CurrentTime);
         return;
     }
 
     if(wm->workspaces[wm->current_ws].focused != c)
         focus(wm, c);
-
-    XAllowEvents(wm->dpy, ReplayPointer, CurrentTime);
-
-    XSync(wm->dpy, False);
 }
 
 void send_conf_req(WM *wm, Client *c, int width, int height, int x, int y){
@@ -1158,4 +1152,25 @@ void level_log(WM *wm, LogLevel level, char *msg, ...){
 
     fprintf(stderr, "\n");
 
+}
+
+void cleanup(WM *wm){
+    Client *c = wm->clients;
+    Client *next;
+
+    while(c){
+        next = c->next;
+        unmanage(wm, c->win);
+        c = next;
+    }
+
+    XCloseDisplay(wm->dpy);
+}
+
+void init_ewmh(WM *wm){
+    set_net_supp_wm_check(wm);
+    initset_net_supported(wm);
+    update_net_num_of_desktops(wm);
+    update_net_current_desktop(wm);
+    init_workspaces(wm);
 }
