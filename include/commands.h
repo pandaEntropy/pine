@@ -9,7 +9,7 @@ typedef struct{
     void (*exec)(WM *wm, char **tokens, int count);
 }Command;
 
-Command *find_cmd(char *name);
+Command *find_cmd(WM *wm, char *name);
 
 void refresh_state(WM *wm);
 

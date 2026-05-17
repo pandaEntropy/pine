@@ -1,5 +1,4 @@
 #include <string.h>
-#include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
 
@@ -26,7 +25,6 @@ void refresh_state(WM *wm){
 
 unsigned int parse_color(char *hexstr){
     if(!hexstr || hexstr[0] != '#'){
-        fprintf(stderr, "parse_color: Invalid color\n");
         return 0;
     }
 
@@ -48,27 +46,30 @@ int parse_dir_string(char *dirstr){
         return DIR_DOWN;
     }
 
-    fprintf(stderr, "parse_dir_string: invalid direction\n");
     return -1;
 }
 
 void set_active_border_color(WM *wm, char **tokens, int count){
+    (void) count;
     wm->config.active_border_color = parse_color(tokens[1]);
     refresh_state(wm);
 }
 
 void set_inactive_border_color(WM *wm, char **tokens, int count){
+    (void) count;
     wm->config.inactive_border_color = parse_color(tokens[1]);
     refresh_state(wm);
 }
 
 void set_border_width(WM *wm, char **tokens, int count){
+    (void) count;
     wm->config.border_width = atoi(tokens[1]);
     refresh_state(wm);
 }
 
 //ex: focus left
 void exec_focus(WM *wm, char **tokens, int count){
+    (void) count;
     int dir = parse_dir_string(tokens[1]);
     if(dir == -1) return;
 
@@ -80,22 +81,29 @@ void exec_focus(WM *wm, char **tokens, int count){
 
 //ex: rotate
 void exec_rotate(WM *wm, char **tokens, int count){
+    (void) count;
+    (void) tokens;
     wm->workspaces[wm->current_ws].layout->rotate(wm);
 }
 
 //ex: hide_all
 void exec_unmap(WM *wm, char **tokens, int count){
+    (void) tokens;
+    (void) count;
     unmap(wm);
 }
 
 //ex: kill_window
 void exec_kill(WM *wm, char **tokens, int count){
+    (void) tokens;
+    (void) count;
     if(!wm->workspaces[wm->current_ws].focused) return;
 
     kill_client(wm, wm->workspaces[wm->current_ws].focused);
 }
 //ex: resize left
 void exec_resize(WM *wm,  char **tokens, int count){
+    (void) count;
     int dir = parse_dir_string(tokens[1]);
     if(dir == -1) return;
 
@@ -104,16 +112,21 @@ void exec_resize(WM *wm,  char **tokens, int count){
 
 //ex: set_master
 void exec_set_master(WM *wm,char **tokens, int count){
+    (void) tokens;
+    (void) count;
     set_master(wm);
 }
 
 //ex: cycle_layout
 void exec_cycle_layout(WM *wm, char **tokens, int count){
+    (void) tokens;
+    (void) count;
     cycle_layout(wm);
 }
 
 //ex: switch_workspace right
 void exec_switch_workspace(WM *wm, char **tokens, int count){
+    (void) count;
     int dir = parse_dir_string(tokens[1]);
     if(dir == -1) return;
 
@@ -122,14 +135,27 @@ void exec_switch_workspace(WM *wm, char **tokens, int count){
 
 //es: reload_config
 void exec_conf_reload(WM *wm, char **tokens, int count){
+    (void) tokens;
+    (void) count;
     reload_config(wm);
 }
 
 //ex: move_client_ws 3
 void exec_move_cli_ws(WM *wm, char **tokens, int count){
+    (void) count;
     int index = atoi(tokens[1]);
 
     move_cli_ws(wm, index);
+}
+
+void exec_set_active_log_level(WM *wm, char **tokens, int count){
+    char *levels[] = {"DEBUG", "INFO", "WARN", "ERROR"};
+    for(int i = 0; i < sizeof(levels) / sizeof(char*); i++){
+        if(strcmp(levels[i], tokens[1]) == 0){
+            wm->current_log_level = i;
+            return;
+        }
+    }
 }
 
 Command commands[] = {
@@ -145,15 +171,16 @@ Command commands[] = {
     {"cycle_layout", 1, exec_cycle_layout},
     {"switch_workspace", 2, exec_switch_workspace},
     {"reload_config", 1, exec_conf_reload},
-    {"move_client_ws", 2, exec_move_cli_ws}
+    {"move_client_ws", 2, exec_move_cli_ws},
+    {"set_log_level", 2, exec_set_active_log_level}
 };
 
-Command *find_cmd(char *name){
-    for(int i = 0; i < sizeof(commands) / sizeof(Command); i++){
+Command *find_cmd(WM *wm, char *name){
+    for(long unsigned int i = 0; i < sizeof(commands) / sizeof(Command); i++){
         if(strcmp(name, commands[i].name) == 0){
             return &commands[i];
         }
     }
-    fprintf(stderr, "find_cmd: Command - %s - not found\n", name);
+    level_log(wm, WARN, "Command - %s - not found", name);
     return NULL;
 }

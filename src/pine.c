@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <X11/Xatom.h>
+#include <time.h>
+#include <stdarg.h>
 
 #include "pine.h"
 #include "layout.h"
@@ -83,11 +85,6 @@ static Dock docks[4];
 static int ndocks = 0;
 
 void OnMapRequest(WM *wm, XMapRequestEvent* ev){
-    XWindowAttributes wa;
-    XGetWindowAttributes(wm->dpy, ev->window, &wa);
-    if(wa.override_redirect)
-        return;
-
     manage(wm, ev->window);
 }
 
@@ -116,8 +113,11 @@ void OnButtonPress(WM *wm, XButtonEvent *ev){
 void OnPropertyNotify(WM *wm, XPropertyEvent *ev){
     handle_property_notify(wm, ev);
 }
+
 void OnUnmapNotify(WM *wm, XUnmapEvent *ev){
-    if (ev->event != wm->root) return;
+    if (ev->event == wm->root){ 
+        return;
+    }
 
     unmanage(wm, ev->window);
 }
@@ -207,7 +207,6 @@ void focus_direction(WM *wm, int dir) {
                 return;
         }
 
-        //get the records
         if (valid && dist < bestdist) {
             best = c;
             bestdist = dist;
@@ -248,6 +247,7 @@ void unmap(WM *wm){
         XSetInputFocus(wm->dpy, wm->root, RevertToNone, CurrentTime);
         set_net_active_window(wm, None);
         for(Client *c = wm->clients; c; c = c->next){
+            c->ignore_unmaps++;
             XUnmapWindow(wm->dpy, c->win);
             XUnmapWindow(wm->dpy, c->parent);
         }
@@ -261,7 +261,10 @@ void unmap(WM *wm){
 }
 
 void kill_client(WM *wm, Client *c){
-    if(!c) return;
+    if(!c){
+        level_log(wm, WARN, "attempted to kill invalid client");
+        return;
+    }
     if(!(c->wtags & wm->current_wtag)) return;
 
     if(c->protocols & PROTO_DELETE){
@@ -275,17 +278,25 @@ void kill_client(WM *wm, Client *c){
         ev.xclient.data.l[1] = CurrentTime;
 
         XSendEvent(wm->dpy, c->win, False, NoEventMask, &ev);
-        return;
     }
     else{
         //If client is not compliant
         XKillClient(wm->dpy, c->win);
     }
+
+    level_log(wm, INFO, "killed client %lu", c->win);
 }
 
 void manage(WM *wm, Window win){
-    if(win_in_clients(wm, win))
+    XWindowAttributes wa;
+    XGetWindowAttributes(wm->dpy, win, &wa);
+    if(wa.override_redirect == True) 
         return;
+
+    if(win_in_clients(wm, win)){
+        level_log(wm, DEBUG, "client %lu attempted to be managed was already managed", win);
+        return;
+    }
 
     Wintype type = classify_window(wm, win);
 
@@ -297,7 +308,10 @@ void manage(WM *wm, Window win){
     }
 
     Client *c = calloc(1, sizeof(Client));
-    if(!c) return;
+    if(!c){
+        level_log(wm, WARN, "failed to allocate space for new client");
+        return;
+    }
 
     c->win = win;
 
@@ -317,9 +331,11 @@ void manage(WM *wm, Window win){
 
     set_protocols(wm, c);
     c->wtags = Tag(wm->current_ws);
+    c->ignore_unmaps = 0;
 
     if(type == WIN_DIALOG || type == WIN_SPLASH || type == WIN_MENU){
         c->floating = true;
+        level_log(wm, DEBUG, "floating window %lu registered", win);
     }
 
     update_net_clients(wm);
@@ -336,6 +352,7 @@ void manage(WM *wm, Window win){
         screen_center(wm, c);
     }
 
+    level_log(wm, INFO, "new window %lu managed", win);
     focus(wm, c);
 }
 
@@ -346,11 +363,20 @@ void unmanage(WM *wm, Window win){
         unmanage_dock(wm, win);
         update_net_workarea(wm);
         tile(wm);
+        level_log(wm, INFO, "dock %lu unmanaged", win);
         return;
     }
 
     Client *c = win_in_clients(wm, win);
-    if(!c) return;
+    if(!c){
+        level_log(wm, WARN, "window %lu to be unmanaged not in clients", win);
+        return;
+    }
+
+    if(c->ignore_unmaps > 0){
+        c->ignore_unmaps--;
+        return;
+    }
 
     bool was_focused = (c == wm->workspaces[wm->current_ws].focused);
 
@@ -365,7 +391,6 @@ void unmanage(WM *wm, Window win){
     else
         wm->tail = c->prev;
 
-    //handles focus by finding the next visible client
     if(was_focused){
         Client *next = c->next;
         while(next && !(next->wtags & wm->current_wtag))
@@ -382,6 +407,7 @@ void unmanage(WM *wm, Window win){
         else{
             wm->workspaces[wm->current_ws].focused = NULL;
             XSetInputFocus(wm->dpy, wm->root, RevertToNone, CurrentTime);
+            level_log(wm, DEBUG, "focus set on root");
         }
     }
 
@@ -400,14 +426,22 @@ void unmanage(WM *wm, Window win){
 
     tile(wm);
     free(c);
+    level_log(wm, INFO, "window %lu unmanaged", win);
 }
 
 void focus(WM *wm, Client *c){
-    if(!c) return;
+    if(!c){
+        level_log(wm, WARN, "failed to focus client");
+        return;
+    }
 
-    if(!(c->wtags & wm->current_wtag)) return;
+    if(!(c->wtags & wm->current_wtag)){
+        return;
+    }
 
-    if(wm->workspaces[wm->current_ws].focused)
+    Client *old_focused = wm->workspaces[wm->current_ws].focused;
+
+    if(old_focused)
         XSetWindowBorder(wm->dpy, wm->workspaces[wm->current_ws].focused->parent, wm->config.inactive_border_color);
 
     wm->workspaces[wm->current_ws].focused = c;
@@ -435,6 +469,10 @@ void focus(WM *wm, Client *c){
     XRaiseWindow(wm->dpy, c->win);
     if(c->parent) XRaiseWindow(wm->dpy, c->parent);
 
+    if(old_focused)
+        level_log(wm, INFO, "focused client %lu from %lu", c->win, old_focused->win);
+    else
+        level_log(wm, INFO, "focused client %lu from root", c->win);
 }
 
 void set_master(WM *wm){
@@ -461,6 +499,8 @@ void set_master(WM *wm){
     wm->clients->prev = c;
 
     wm->clients = c;
+
+    level_log(wm, INFO, "new master set to %lu", wm->clients->win);
 
     tile(wm);
 }
@@ -508,8 +548,10 @@ bool get_strut_partial(WM *wm, Dock *dock){
         return false;
 
     if(!data || nitems < 12){
-        if(data)
+        if(data){
             XFree(data);
+        }
+        level_log(wm, WARN, "failed to acqurie partial struts from dock %lu", dock->win);
         return false;
     }
 
@@ -554,8 +596,10 @@ bool get_strut(WM *wm, Dock *dock){
         return false;
 
     if(!data || nitems < 4){
-        if(data)
+        if(data){
             XFree(data);
+        }
+        level_log(wm, WARN, "failed to acquire struts from dock %lu", dock->win);
         return false;
     }
 
@@ -597,13 +641,17 @@ void unmanage_dock(WM *wm, Window win){
             break;
         }
     }
-    if(idx == -1) return;
+    if(idx == -1){
+        level_log(wm, WARN, "dock %lu to be unmanaged not found", win);
+        return;
+    }
 
     for(int i = idx; i < ndocks-1; i++){
         docks[i] = docks[i + 1];
     }
 
     ndocks--;
+    level_log(wm, INFO, "dock %lu unmanaged", win);
     recalc_usable_area(wm);
 }
 
@@ -669,15 +717,16 @@ cleanup:
 }
 
 void manage_dock(WM *wm, Window win){
-    if(ndocks == MAX_DOCKS)
+    if(ndocks == MAX_DOCKS){
+        level_log(wm, WARN, "failed to manage dock %lu, max number of docks exceeded", win);
         return;
+    }
 
     Dock *dock = &docks[ndocks];
     *dock = (Dock){0};
     dock->win = win;
 
     if(!get_any_strut(wm, dock)){
-        printf("Failed to acquire strut parameters\n");
         return;
     }
 
@@ -686,8 +735,7 @@ void manage_dock(WM *wm, Window win){
     recalc_usable_area(wm);
 
     XMapWindow(wm->dpy, win);
-
-    return;
+    level_log(wm, INFO, "dock %lu managed", win);
 }
 
 Window get_transient(WM *wm, Window win){
@@ -696,6 +744,7 @@ Window get_transient(WM *wm, Window win){
     if(XGetTransientForHint(wm->dpy, win, &transient))
         return transient;
 
+    level_log(wm, WARN, "failed to acquire transient window for window %lu", win);
     return None;
 }
 
@@ -778,6 +827,8 @@ void handle_net_active_window_msg(WM *wm, XClientMessageEvent *cm){
 
         XRaiseWindow(wm->dpy, c->win);
     }
+
+    level_log(wm, DEBUG, "net active window message handled");
 }
 
 void handle_net_close_window_msg(WM *wm, XClientMessageEvent *cm){
@@ -786,6 +837,8 @@ void handle_net_close_window_msg(WM *wm, XClientMessageEvent *cm){
     if(c){
         kill_client(wm, c);
     }
+
+    level_log(wm, DEBUG, "net close window message handled");
 }
 
 void update_net_clients(WM *wm){
@@ -968,10 +1021,15 @@ void reparent(WM *wm, Client *c){
             None);
 
     XSelectInput(wm->dpy, c->parent, ExposureMask | SubstructureNotifyMask);
+
+    level_log(wm, INFO, "client %lu reparented to frame %lu", c->win, c->parent);
 }
 
 void unparent(WM *wm, Client *c){
-    if(!c->parent) return;
+    if(!c->parent){
+        level_log(wm, WARN, "failed to unparent client %lu, client has no frame", c->win);
+        return;
+    }
 
     XDestroyWindow(wm->dpy, c->parent);
 }
@@ -1058,6 +1116,12 @@ void init_workspaces(WM *wm){
 }
 
 void switch_workspace(WM *wm, int dir){
+    for(Client *c = wm->clients; c; c = c->next){
+        if(c->wtags & wm->current_wtag){
+            c->ignore_unmaps++;
+        }
+    }
+
     if(dir == DIR_RIGHT){
         wm->current_ws = (wm->current_ws + 1) % MAX_WS;
     }
@@ -1078,6 +1142,8 @@ void switch_workspace(WM *wm, int dir){
         XSetInputFocus(wm->dpy, wm->root, RevertToNone, CurrentTime);
         set_net_active_window(wm, None);
     }
+
+    level_log(wm, INFO, "current workspace chaged to workspace %d", wm->current_ws + 1);
 }
 
 void move_cli_ws(WM *wm, int index){
@@ -1113,25 +1179,35 @@ void move_cli_ws(WM *wm, int index){
     focus(wm, c);
 }
 
-void spawn(WM *wm, const Arg *arg){
-    (void)wm;
-    if(fork() == 0){
-        setsid(); // Create a new session for the child
-        execvp(arg->cparr[0], (char *const *)arg->cparr);
-
-        //If child fails
-        perror("execvp failed");
-        _exit(1); // A safe way to terminate the forked child
-    }
-}
-
 void init_config(WM *wm){
     wm->config.active_border_color = 0x4488FF;
     wm->config.inactive_border_color = 0x71797E;
     wm->config.border_width = 4;
     wm->config.conf_addr = "/home/ilya/.config/pine/pine.conf";
+    wm->current_log_level = ERROR;
 }
 
 void set_net_active_window(WM *wm, Window win){
     XChangeProperty(wm->dpy, wm->root, wm->atoms.net_active_window, XA_WINDOW, 32, PropModeReplace, (unsigned char *)&win, 1);
+}
+
+void level_log(WM *wm, LogLevel level, char *msg, ...){
+    if(level < wm->current_log_level || !msg)
+        return;
+
+    time_t current_time = time(NULL);
+    struct tm *tm_info = localtime(&current_time);
+    char buf[25];
+    strftime(buf, sizeof(buf), "%d-%m-%Y %H:%M:%S", tm_info);
+
+    char *levels[] = {"DEBUG", "INFO", "WARN", "ERROR"};
+    fprintf(stderr, "[%s] %s: ", buf, levels[level]);
+
+    va_list args;
+    va_start(args, msg);
+    vfprintf(stderr, msg, args);
+    va_end(args);
+
+    fprintf(stderr, "\n");
+
 }

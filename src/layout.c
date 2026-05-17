@@ -2,7 +2,6 @@
 #include "layout.h"
 
 #include <X11/Xlib.h>
-#include <stdio.h>
 #include <stdbool.h>
 
 #define MAX_MASTER 1
@@ -70,11 +69,6 @@ void tile(WM *wm){
             if(c->parent) XMapWindow(wm->dpy, c->parent);
             XMapWindow(wm->dpy, c->win);
         }
-    }
-
-    if(wm->workspaces[wm->current_ws].focused){
-        XRaiseWindow(wm->dpy, wm->workspaces[wm->current_ws].focused->parent);
-        XRaiseWindow(wm->dpy, wm->workspaces[wm->current_ws].focused->win);
     }
 }
 

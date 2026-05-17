@@ -24,11 +24,11 @@ int tokenize(char *line, char **tokens){
 void interpret_tokens(WM *wm, char **tokens, int count){
     if(count == 0) return;
 
-    Command *cmd = find_cmd(tokens[0]);
+    Command *cmd = find_cmd(wm, tokens[0]);
     if(!cmd) return;
 
     if(count < cmd->min_args){
-        fprintf(stderr, "interpret: Insufficient amount of arguments\n");
+        level_log(wm, WARN, "insufficient amount of arguments in config file");
         return;
     }
 
@@ -38,7 +38,7 @@ void interpret_tokens(WM *wm, char **tokens, int count){
 void load_config(WM *wm){
     FILE *file = fopen(wm->config.conf_addr, "r");
     if(!file){
-        perror("fopen");
+        level_log(wm, WARN, "failed to load config");
         return;
     }
 
@@ -59,4 +59,5 @@ void reload_config(WM *wm){
     load_config(wm);
 
     refresh_state(wm);
+    level_log(wm, DEBUG, "config successfully reoladed");
 }

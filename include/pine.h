@@ -17,6 +17,7 @@ typedef struct Client{
     unsigned int protocols;
 
     uint32_t wtags; //workspace tags
+    int ignore_unmaps;
 }Client;
 
 typedef struct Dock{
@@ -57,6 +58,13 @@ typedef enum{
     LAYOUT_MASTER,
     LAYOUT_MONOCLE
 }LayoutID;
+
+typedef enum{
+    DEBUG,
+    INFO,
+    WARN,
+    ERROR,
+}LogLevel;
 
 typedef struct Layout{
     LayoutID id;
@@ -127,16 +135,10 @@ typedef struct WM{
     int usable_width;
 
     Atoms atoms;
-
     Layout layouts[8];
-
     Config config;
+    LogLevel current_log_level;
 }WM;
-
-//TODO remove, this is legacy
-void cmd_kill(WM *wm, const Arg *arg);
-
-
 
 void handle_XEvent(WM *wm, XEvent *ev);
 
@@ -185,5 +187,7 @@ void move_cli_ws(WM *wm, int index);
 void spawn(WM *wm, const Arg *arg);
 
 void init_config(WM *wm);
+
+void level_log(WM *Wm, LogLevel level, char *msg, ...);
 
 #endif

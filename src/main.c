@@ -20,13 +20,16 @@ int startup_handler(Display *dpy, XErrorEvent *ev){
 }
 
 int general_handler(Display *dpy, XErrorEvent *ev){
-    if(ev->error_code == BadWindow)
+    if(ev->error_code == BadWindow ||
+        ev->error_code == BadDrawable ||
+        ev->error_code == BadMatch)
         return 0;
 
     char buf[256];
     XGetErrorText(dpy, ev->error_code, buf, sizeof(buf));
 
-    fprintf(stderr, "XError: %s (request = %d)\n", buf, ev->request_code);
+    fprintf(stderr, "XError: %s\n request=%d minor=%d resource=0x%lx", buf, ev->request_code, ev->minor_code, 
+            ev->resourceid);
 
     return 0;
 }
@@ -54,7 +57,7 @@ int main(void)
     XSync(wm.dpy, False);
 
     if(startup_err){
-        fprintf(stderr, "Another WM is currently running\n");
+        level_log(&wm, ERROR, "another client has selected substructure redirect. Closing. ");
         return 1;
     }
 
