@@ -132,7 +132,7 @@ void exec_switch_workspace(WM *wm, char **tokens, int count){
     switch_workspace(wm, dir);
 }
 
-//es: reload_config
+//ex: reload_config
 void exec_conf_reload(WM *wm, char **tokens, int count){
     (void) tokens;
     (void) count;
@@ -147,7 +147,7 @@ void exec_move_cli_ws(WM *wm, char **tokens, int count){
     move_cli_ws(wm, index);
 }
 
-void exec_set_active_log_level(WM *wm, char **tokens, int count){
+void set_active_log_level(WM *wm, char **tokens, int count){
     char *levels[] = {"DEBUG", "INFO", "WARN", "ERROR"};
     for(int i = 0; i < sizeof(levels) / sizeof(char*); i++){
         if(strcmp(levels[i], tokens[1]) == 0){
@@ -155,6 +155,18 @@ void exec_set_active_log_level(WM *wm, char **tokens, int count){
             return;
         }
     }
+}
+
+void set_gap_size(WM *wm, char **tokens, int count){
+    int diff = atoi(tokens[1]) - wm->config.gap_size;
+
+    wm->usable_width -= 2 * diff;
+    wm->usable_height -= 2 * diff;
+    wm->usable_x += diff;
+    wm->usable_y += diff;
+    wm->config.gap_size = atoi(tokens[1]);
+
+    refresh_state(wm);
 }
 
 Command commands[] = {
@@ -171,7 +183,8 @@ Command commands[] = {
     {"switch_workspace", 2, exec_switch_workspace},
     {"reload_config", 1, exec_conf_reload},
     {"move_client_ws", 2, exec_move_cli_ws},
-    {"set_log_level", 2, exec_set_active_log_level}
+    {"set_log_level", 2, set_active_log_level},
+    {"set_gap_size", 2, set_gap_size}
 };
 
 Command *find_cmd(WM *wm, char *name){

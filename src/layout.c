@@ -6,7 +6,7 @@
 
 #define MAX_MASTER 1
 
-int ntiled = 0;
+static int ntiled = 0;
 
 typedef struct{
     int width;
@@ -16,7 +16,9 @@ typedef struct{
 }Rect;
 
 typedef struct LayoutTarget{
-    Client *client; Rect geom; }LayoutTarget;
+    Client *client; 
+    Rect geom; 
+}LayoutTarget;
 
 void moveresize_window(WM *wm, Client *c, unsigned int width, unsigned int height, int x, int y);
 
@@ -221,8 +223,8 @@ void parent_center(WM *wm, Window parent, Client *c){
     if(x < 0) x = 0;
     if(y < 0) y = 0;
 
+    moveresize_window(wm, c, cattr.width, cattr.height, x, y);
     if(c->wtags & wm->current_wtag){
-        moveresize_window(wm, c, cattr.width, cattr.height, x, y);
         XMapWindow(wm->dpy, c->win);
     }
 }
@@ -238,17 +240,32 @@ void screen_center(WM *wm, Client *c){
     if(x < 0) x = 0;
     if(y < 0) y = 0;
 
+    moveresize_window(wm, c, cattr.width, cattr.height, x, y);
     if(c->wtags & wm->current_wtag){
-        moveresize_window(wm, c, cattr.width, cattr.height, x, y);
+        XMapWindow(wm->dpy, c->win);
     }
-
-    XMapWindow(wm->dpy, c->win);
 }
 
 void moveresize_window(WM *wm, Client *c, unsigned int width, unsigned int height, int x, int y){
     int border_width = wm->config.border_width;
+    int new_width, new_height, new_x, new_y;
+    if(c->floating){
+        new_width = width- (2 * border_width);
+        new_height = height - (2 * border_width);
+        new_y = y;
+        new_x = x;
+    }
+    else{
+        new_width = width - (2 * wm->config.gap_size) - (2 * border_width);
+        new_height = height - (2 * wm->config.gap_size) - (2 * border_width);
+        new_x = x + wm->config.gap_size;
+        new_y = y + wm->config.gap_size;
+    }
 
-    XMoveResizeWindow(wm->dpy, c->win, x, y, width - 2 * border_width, height - 2 * border_width);
+    if(new_width < 10) new_width = 10;
+    if(new_height < 10) new_height = 10;
 
-    send_conf_req(wm, c, width, height, x, y);
+    XMoveResizeWindow(wm->dpy, c->win, new_x, new_y, new_width, new_height);
+
+    send_conf_req(wm, c, new_width, new_height, new_x, new_y);
 }

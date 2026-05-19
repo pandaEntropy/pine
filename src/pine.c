@@ -103,7 +103,8 @@ void OnConfigureRequest(WM *wm, XConfigureRequestEvent* ev){
 }
 
 void OnDestroyNotify(WM *wm, XDestroyWindowEvent *ev){
-    unmanage(wm, ev->window);
+    if(win_in_clients(wm, ev->window))
+        unmanage(wm, ev->window);
 }
 
 void OnButtonPress(WM *wm, XButtonEvent *ev){
@@ -247,7 +248,8 @@ void unmap(WM *wm){
         XSetInputFocus(wm->dpy, wm->root, RevertToNone, CurrentTime);
         set_net_active_window(wm, None);
         for(Client *c = wm->clients; c; c = c->next){
-            XMoveWindow(wm->dpy, c->win, -4000, 0);
+            c->ignore_unmaps++;
+            XUnmapWindow(wm->dpy, c->win);
         }
         subwin_unmapped = true;
     }
@@ -330,7 +332,7 @@ void manage(WM *wm, Window win){
     set_protocols(wm, c);
     c->wtags = Tag(wm->current_ws);
     c->ignore_unmaps = 0;
-    
+
     Window parent;
     if(type == WIN_DIALOG || type == WIN_SPLASH || type == WIN_MENU){
         c->floating = true;
@@ -623,11 +625,11 @@ void recalc_usable_area(WM *wm){
         if(docks[i].top > top) top = docks[i].top;
     }
 
-    wm->usable_height = wm->sh - top - bottom;
-    wm->usable_width = wm->sw - right - left;
+    wm->usable_height -= top - bottom;
+    wm->usable_width -= right - left;
 
-    wm->usable_x = left;
-    wm->usable_y = top;
+    wm->usable_x += left;
+    wm->usable_y += top;
 }
 
 void unmanage_dock(WM *wm, Window win){
@@ -986,11 +988,15 @@ void handle_buttonpress(WM *wm, XButtonEvent *ev){
     Client *c = win_in_clients(wm, win);
 
     if(!c){
+        XAllowEvents(wm->dpy, ReplayPointer, CurrentTime);
         return;
     }
 
     if(wm->workspaces[wm->current_ws].focused != c)
         focus(wm, c);
+
+    XAllowEvents(wm->dpy, ReplayPointer, CurrentTime);
+    XSync(wm->dpy, False);
 }
 
 void send_conf_req(WM *wm, Client *c, int width, int height, int x, int y){
@@ -1006,7 +1012,7 @@ void send_conf_req(WM *wm, Client *c, int width, int height, int x, int y){
     ev.x = x;
     ev.y = y;
 
-    ev.border_width = 0;
+    ev.border_width = wm->config.border_width;
     ev.above = None;
     ev.override_redirect = False;
 
@@ -1127,6 +1133,7 @@ void init_config(WM *wm){
     wm->config.border_width = 4;
     wm->config.conf_addr = "/home/ilya/.config/pine/pine.conf";
     wm->current_log_level = ERROR;
+    wm->config.gap_size = 6;
 }
 
 void set_net_active_window(WM *wm, Window win){

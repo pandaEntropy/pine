@@ -72,9 +72,9 @@ int main(void)
     XSetInputFocus(wm.dpy, wm.root, RevertToParent, CurrentTime);
 
     XGrabButton(wm.dpy, 1, None, wm.root, True,
-            ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
+            ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeSync, GrabModeAsync, None, None);
     XGrabButton(wm.dpy, 3, None, wm.root, True,
-            ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
+            ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeSync, GrabModeAsync, None, None);
 
     //Create and define the cursor
     Cursor cursor = XCreateFontCursor(wm.dpy, XC_left_ptr);
@@ -83,15 +83,17 @@ int main(void)
     //Initialize atoms in the wm struct
     init_atoms(&wm);
 
-    wm.usable_height = wm.sh;
-    wm.usable_width = wm.sw;
-
     init_layouts(&wm);
 
     init_config(&wm);
     load_config(&wm);
 
     init_ewmh(&wm);
+
+    wm.usable_height = wm.sh - (2 * wm.config.gap_size);
+    wm.usable_width = wm.sw - (2 * wm.config.gap_size);
+    wm.usable_x += wm.config.gap_size;
+    wm.usable_y += wm.config.gap_size;
 
     XSync(wm.dpy, False);
 
