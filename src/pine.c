@@ -79,6 +79,8 @@ void handle_net_close_window_msg(WM *wm, XClientMessageEvent *cm);
 
 void set_net_active_window(WM *wm, Window win);
 
+void set_net_wm_desktop(WM *wm, Client *c);
+
 bool subwin_unmapped = false;
 
 static Dock docks[4];
@@ -332,6 +334,8 @@ void manage(WM *wm, Window win){
     set_protocols(wm, c);
     c->wtags = Tag(wm->current_ws);
     c->ignore_unmaps = 0;
+    c->active_ws = wm->current_ws;
+    set_net_wm_desktop(wm, c);
 
     Window parent;
     if(type == WIN_DIALOG || type == WIN_SPLASH || type == WIN_MENU){
@@ -362,13 +366,10 @@ void manage(WM *wm, Window win){
 }
 
 void unmanage(WM *wm, Window win){
-    Wintype type = classify_window(wm, win);
-
-    if(type == WIN_DOCK){
+    if(win_in_docks(win)){
         unmanage_dock(wm, win);
         update_net_workarea(wm);
         tile(wm);
-        level_log(wm, INFO, "dock %lu unmanaged", win);
         return;
     }
 
@@ -625,11 +626,11 @@ void recalc_usable_area(WM *wm){
         if(docks[i].top > top) top = docks[i].top;
     }
 
-    wm->usable_height -= top - bottom;
-    wm->usable_width -= right - left;
+    wm->usable_height = wm->sh - (2 * wm->config.gap_size) - top - bottom;
+    wm->usable_width = wm->sw - (2 * wm->config.gap_size) - right - left;
 
-    wm->usable_x += left;
-    wm->usable_y += top;
+    wm->usable_x = wm->config.gap_size + left;
+    wm->usable_y = wm->config.gap_size + top;
 }
 
 void unmanage_dock(WM *wm, Window win){
@@ -786,6 +787,7 @@ void init_atoms(WM *wm){
     wm->atoms.net_client_list = XInternAtom(wm->dpy, "_NET_CLIENT_LIST", False);
     wm->atoms.net_num_of_desktops = XInternAtom(wm->dpy, "_NET_NUMBER_OF_DESKTOPS", False);
     wm->atoms.net_current_desktop = XInternAtom(wm->dpy, "_NET_CURRENT_DESKTOP", False);
+    wm->atoms.net_wm_desktop = XInternAtom(wm->dpy, "_NET_WM_DESKTOP", False);
     wm->atoms.net_workarea = XInternAtom(wm->dpy, "_NET_WORKAREA", False);
     wm->atoms.net_supp_wm_check = XInternAtom(wm->dpy, "_NET_SUPPORTING_WM_CHECK", False);
     wm->atoms.net_close_window = XInternAtom(wm->dpy, "_NET_CLOSE_WINDOW", False);
@@ -1120,7 +1122,10 @@ void move_cli_ws(WM *wm, int index){
     wm->current_ws = index;
     wm->current_wtag = Tag(index);
 
+    c->active_ws = wm->current_ws;
+
     update_net_current_desktop(wm);
+    set_net_wm_desktop(wm, c);
 
     tile(wm);
 
@@ -1132,7 +1137,7 @@ void init_config(WM *wm){
     wm->config.inactive_border_color = 0x71797E;
     wm->config.border_width = 4;
     wm->config.conf_addr = "/home/ilya/.config/pine/pine.conf";
-    wm->current_log_level = ERROR;
+    wm->current_log_level = INFO;
     wm->config.gap_size = 6;
 }
 
@@ -1180,4 +1185,11 @@ void init_ewmh(WM *wm){
     update_net_num_of_desktops(wm);
     update_net_current_desktop(wm);
     init_workspaces(wm);
+}
+
+void set_net_wm_desktop(WM *wm, Client *c){
+    long ws = (long) c->active_ws; 
+
+    XChangeProperty(wm->dpy, c->win, wm->atoms.net_wm_desktop, XA_CARDINAL, 32, PropModeReplace, 
+    (unsigned char *) &ws, 1);
 }

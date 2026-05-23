@@ -17,6 +17,7 @@ typedef struct Client{
 
     uint32_t wtags; //workspace tags
     int ignore_unmaps;
+    int active_ws; //index of the client's active workspace
 }Client;
 
 typedef struct Dock{
@@ -87,6 +88,7 @@ typedef struct Atoms{
     Atom net_client_list;
     Atom net_num_of_desktops;
     Atom net_current_desktop;
+    Atom net_wm_desktop;
     Atom net_workarea;
     Atom net_supp_wm_check;
     Atom net_close_window;
