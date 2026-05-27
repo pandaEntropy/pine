@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 #include <X11/Xlib.h>
 
 #include "commands.h"
@@ -59,5 +60,5 @@ void reload_config(WM *wm){
     load_config(wm);
 
     refresh_state(wm);
-    level_log(wm, DEBUG, "config successfully reoladed");
+    level_log(wm, DEBUG, "config successfully reloaded");
 }

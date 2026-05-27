@@ -10,7 +10,6 @@
 #include <X11/Xatom.h>
 #include <time.h>
 #include <stdarg.h>
-
 #include "pine.h"
 #include "layout.h"
 #include "forward.h"
@@ -80,6 +79,10 @@ void handle_net_close_window_msg(WM *wm, XClientMessageEvent *cm);
 void set_net_active_window(WM *wm, Window win);
 
 void set_net_wm_desktop(WM *wm, Client *c);
+
+bool isSticky(WM *wm, Client *c);
+
+void get_config_path(WM *wm, char *buf, size_t maxlen);
 
 bool subwin_unmapped = false;
 
@@ -337,7 +340,11 @@ void manage(WM *wm, Window win){
     c->active_ws = wm->current_ws;
     set_net_wm_desktop(wm, c);
 
-    Window parent;
+    if(isSticky(wm, c)){
+        c->sticky = true;
+    }
+
+    Window parent = None;
     if(type == WIN_DIALOG || type == WIN_SPLASH || type == WIN_MENU){
         c->floating = true;
         parent = get_transient(wm, c->win);
@@ -783,6 +790,9 @@ void init_atoms(WM *wm){
     wm->atoms.net_wm_win_type_splash = XInternAtom(wm->dpy, "_NET_WM_WINDOW_TYPE_SPLASH", False);
     wm->atoms.net_wm_win_type_normal = XInternAtom(wm->dpy, "_NET_WM_WINDOW_TYPE_NORMAL", False);
 
+    wm->atoms.net_wm_state = XInternAtom(wm->dpy, "_NET_WM_STATE", False);
+    wm->atoms.net_wm_state_sticky = XInternAtom(wm->dpy, "_NET_WM_STATE_STICKY", False);
+
     wm->atoms.net_active_window = XInternAtom(wm->dpy, "_NET_ACTIVE_WINDOW", False);
     wm->atoms.net_client_list = XInternAtom(wm->dpy, "_NET_CLIENT_LIST", False);
     wm->atoms.net_num_of_desktops = XInternAtom(wm->dpy, "_NET_NUMBER_OF_DESKTOPS", False);
@@ -883,7 +893,10 @@ void initset_net_supported(WM *wm){
         wm->atoms.net_current_desktop,
         wm->atoms.net_workarea,
         wm->atoms.net_supp_wm_check,
-        wm->atoms.net_close_window
+        wm->atoms.net_close_window,
+        wm->atoms.net_wm_desktop,
+        wm->atoms.net_wm_state,
+        wm->atoms.net_wm_state_sticky
     };
 
     int nsupp = sizeof(supported) / sizeof(supported[0]);
@@ -1136,9 +1149,12 @@ void init_config(WM *wm){
     wm->config.active_border_color = 0x4488FF;
     wm->config.inactive_border_color = 0x71797E;
     wm->config.border_width = 4;
-    wm->config.conf_addr = "/home/ilya/.config/pine/pine.conf";
     wm->current_log_level = INFO;
     wm->config.gap_size = 6;
+
+    char buf[PATH_MAX];
+    get_config_path(wm, buf, sizeof(buf));
+    wm->config.conf_addr = strdup(buf);
 }
 
 void set_net_active_window(WM *wm, Window win){
@@ -1192,4 +1208,68 @@ void set_net_wm_desktop(WM *wm, Client *c){
 
     XChangeProperty(wm->dpy, c->win, wm->atoms.net_wm_desktop, XA_CARDINAL, 32, PropModeReplace, 
     (unsigned char *) &ws, 1);
+}
+
+bool isSticky(WM *wm, Client *c){
+    Atom actual_type;
+    int actual_format;
+    unsigned long nitems, bytes_after;
+    unsigned char *data = NULL;
+
+    if(XGetWindowProperty(
+                wm->dpy,
+                c->win,
+                wm->atoms.net_wm_state,
+                0,
+                32,
+                False,
+                XA_ATOM,
+                &actual_type,
+                &actual_format,
+                &nitems,
+                &bytes_after,
+                &data) != Success) return false;
+
+    for(size_t i = 0; i < nitems; i++){
+        if(data[i] == wm->atoms.net_wm_state_sticky){
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void get_config_path(WM *wm, char *buf, size_t maxlen){
+    char *home = getenv("HOME");
+    if(home && home[0] != '\0'){
+        snprintf(buf, maxlen, "%s/.config/pine/pinerc", home);
+        if(access(buf, F_OK) == 0) return;
+    }
+
+    level_log(wm, WARN, "failed to locate configuration file");
+}
+
+void exec_start(WM *wm){
+    char *xdg_conf = getenv("HOME");
+    if(xdg_conf && xdg_conf[0] != '\0'){
+
+        char buf[PATH_MAX];
+        snprintf(buf, sizeof(buf), "%s/.config/pine/start.sh", xdg_conf);
+
+        if(access(buf, F_OK) == 0){
+            pid_t pid = fork();
+
+            if(pid == 0){
+                execl(buf, "start.sh", NULL);
+                _exit(1);
+            }
+            else if(pid < 0){
+                level_log(wm, WARN, "failed to fork start script");
+            }
+
+            return;
+        }
+    }
+
+    level_log(wm, WARN, "failed to locate start script");
 }

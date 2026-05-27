@@ -148,8 +148,9 @@ void exec_move_cli_ws(WM *wm, char **tokens, int count){
 }
 
 void set_active_log_level(WM *wm, char **tokens, int count){
+    (void)count;
     char *levels[] = {"DEBUG", "INFO", "WARN", "ERROR"};
-    for(int i = 0; i < sizeof(levels) / sizeof(char*); i++){
+    for(size_t i = 0; i < sizeof(levels) / sizeof(char*); i++){
         if(strcmp(levels[i], tokens[1]) == 0){
             wm->current_log_level = i;
             return;
@@ -158,6 +159,7 @@ void set_active_log_level(WM *wm, char **tokens, int count){
 }
 
 void set_gap_size(WM *wm, char **tokens, int count){
+    (void)count;
     int diff = atoi(tokens[1]) - wm->config.gap_size;
 
     wm->usable_width -= 2 * diff;

@@ -22,6 +22,8 @@ typedef struct LayoutTarget{
 
 void moveresize_window(WM *wm, Client *c, unsigned int width, unsigned int height, int x, int y);
 
+void unmap_client(WM *wm, Client *c);
+
 Layout master_layout(){
     return (Layout){.id = LAYOUT_MASTER, .tile = master_tile, .rotate = master_rotate, .focus = focus_direction};
 }
@@ -35,12 +37,12 @@ void tile(WM *wm){
 
     for(Client *c = wm->clients; c; c = c->next){
         if(c->wtags & wm->current_wtag){
-            if(!c->floating){
+            if(!c->floating && !c->sticky){
                 ntiled++;
             }
         }
         else{
-            XUnmapWindow(wm->dpy, c->win);
+            unmap_client(wm, c);
         }
     }
 
@@ -50,7 +52,7 @@ void tile(WM *wm){
 
         int i = 0;
         for(Client *c = wm->clients; c; c = c->next){
-            if(!c->floating && (c->wtags & wm->current_wtag)){
+            if(!c->floating && !c->sticky && (c->wtags & wm->current_wtag)){
                 targets[i].client = c;
                 i++;
             }
@@ -247,6 +249,8 @@ void screen_center(WM *wm, Client *c){
 }
 
 void moveresize_window(WM *wm, Client *c, unsigned int width, unsigned int height, int x, int y){
+    if(c->sticky) return;
+
     int border_width = wm->config.border_width;
     int new_width, new_height, new_x, new_y;
     if(c->floating){
@@ -268,4 +272,10 @@ void moveresize_window(WM *wm, Client *c, unsigned int width, unsigned int heigh
     XMoveResizeWindow(wm->dpy, c->win, new_x, new_y, new_width, new_height);
 
     send_conf_req(wm, c, new_width, new_height, new_x, new_y);
+}
+
+void unmap_client(WM *wm, Client *c){
+    if(!c->sticky){
+        XUnmapWindow(wm->dpy, c->win);
+    }
 }

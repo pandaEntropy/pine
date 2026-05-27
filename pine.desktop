@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=pine
+Comment=A lightweight tiling window manager
+Exec=pine

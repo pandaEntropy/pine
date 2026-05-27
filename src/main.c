@@ -37,6 +37,7 @@ int general_handler(Display *dpy, XErrorEvent *ev){
 }
 
 void handle_sigterm(int sig){
+    (void)sig;
     running = 0;
 }
 
@@ -80,7 +81,6 @@ int main(void)
     Cursor cursor = XCreateFontCursor(wm.dpy, XC_left_ptr);
     XDefineCursor(wm.dpy, DefaultRootWindow(wm.dpy), cursor);
 
-    //Initialize atoms in the wm struct
     init_atoms(&wm);
 
     init_layouts(&wm);
@@ -95,13 +95,16 @@ int main(void)
     wm.usable_x += wm.config.gap_size;
     wm.usable_y += wm.config.gap_size;
 
-    XSync(wm.dpy, False);
-
     ipc_init();
 
-    struct sigaction sa;
+    XSync(wm.dpy, False);
+
+    exec_start(&wm);
+
+    struct sigaction sa = {0};
     sa.sa_handler = &handle_sigterm;
     sigaction(SIGTERM, &sa, NULL);
+    sigaction(SIGINT, &sa, NULL);
 
     int xfd = ConnectionNumber(wm.dpy);
     int range = (xfd > wmfd ? xfd : wmfd) + 1;
@@ -129,6 +132,5 @@ int main(void)
             }
         }
     }
-
     cleanup(&wm);
 }

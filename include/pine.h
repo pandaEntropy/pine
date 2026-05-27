@@ -13,6 +13,7 @@ typedef struct Client{
     struct Client *next;
     struct Client *prev;
     bool floating;
+    bool sticky;
     unsigned int protocols;
 
     uint32_t wtags; //workspace tags
@@ -35,17 +36,6 @@ typedef struct Dock{
     int bottom_start_x;
     int bottom_end_x;
 }Dock;
-
-typedef struct Arg{
-    int i;
-    char *str;
-    char **cparr;
-    struct{
-        char *name;
-        char* key;
-        unsigned int mod;
-    }bind;
-}Arg;
 
 typedef enum Direction{
     DIR_LEFT,
@@ -83,6 +73,9 @@ typedef struct Atoms{
     Atom net_wm_win_type_menu;
     Atom net_wm_win_type_splash;
     Atom net_wm_win_type_normal;
+    
+    Atom net_wm_state;
+    Atom net_wm_state_sticky;
 
     Atom net_active_window;
     Atom net_client_list;
@@ -195,5 +188,7 @@ void level_log(WM *Wm, LogLevel level, char *msg, ...);
 void cleanup(WM *wm);
 
 void init_ewmh(WM *wm);
+
+void exec_start(WM *wm);
 
 #endif
