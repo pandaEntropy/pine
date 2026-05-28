@@ -102,7 +102,7 @@ typedef struct Workspace{
 }Workspace;
 
 typedef struct Config{
-    unsigned int border_width; //TODO later add an option to disable borders
+    unsigned int border_width;
     unsigned long active_border_color;
     unsigned long inactive_border_color;
     int gap_size;

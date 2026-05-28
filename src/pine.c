@@ -1149,7 +1149,7 @@ void init_config(WM *wm){
     wm->config.active_border_color = 0x4488FF;
     wm->config.inactive_border_color = 0x71797E;
     wm->config.border_width = 4;
-    wm->current_log_level = INFO;
+    wm->current_log_level = ERROR;
     wm->config.gap_size = 6;
 
     char buf[PATH_MAX];
