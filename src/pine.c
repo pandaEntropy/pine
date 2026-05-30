@@ -10,6 +10,7 @@
 #include <X11/Xatom.h>
 #include <time.h>
 #include <stdarg.h>
+
 #include "pine.h"
 #include "layout.h"
 #include "forward.h"
@@ -1111,6 +1112,7 @@ void switch_workspace(WM *wm, int dir){
 
 void move_cli_ws(WM *wm, int index){
     if(MAX_WS - 1 < index || index < 0) return;
+    if(index == wm->current_ws) return;
 
     Client *c = wm->workspaces[wm->current_ws].focused;
     if(!c) return;
@@ -1122,6 +1124,12 @@ void move_cli_ws(WM *wm, int index){
     Client *prev = c->prev;
     while(!next && prev && !(prev->wtags & wm->current_wtag))
         prev = prev->prev;
+
+    for(Client *cli = wm->clients; cli; cli = cli->next){
+        if(cli->wtags & wm->current_wtag && (cli->win != c->win)){
+            cli->ignore_unmaps++;
+        }
+    }
 
     if(next)
         wm->workspaces[wm->current_ws].focused = next;
@@ -1261,7 +1269,7 @@ void exec_start(WM *wm){
 
             if(pid == 0){
                 execl(buf, "start.sh", NULL);
-                _exit(1);
+                exit(1);
             }
             else if(pid < 0){
                 level_log(wm, WARN, "failed to fork start script");

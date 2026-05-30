@@ -9,9 +9,6 @@
 #include "ipc.h" 
 #include "config.h"
 
-#define IPC_PATH "/tmp/wm.sock"
-#define IPC_BUFSIZE 128
-
 int wmfd = -1;
 
 void ipc_init(){
@@ -23,10 +20,10 @@ void ipc_init(){
         return;
     }
 
-    unlink(IPC_PATH);
+    unlink(SOCK_PATH);
 
     addr.sun_family = AF_UNIX;
-    strncpy(addr.sun_path, IPC_PATH, sizeof(addr.sun_path) - 1);
+    strncpy(addr.sun_path, SOCK_PATH, sizeof(addr.sun_path) - 1);
 
     if(bind(wmfd, (struct sockaddr *)&addr, sizeof(addr)) < 0){
         perror("bind");
@@ -40,7 +37,7 @@ void ipc_init(){
         return;
     }
 
-    //makes the connection non-blocking
+    //makes the connection non blocking
     fcntl(wmfd, F_SETFL, O_NONBLOCK);
     //close on exec
     fcntl(wmfd, F_SETFD, FD_CLOEXEC);
@@ -48,7 +45,7 @@ void ipc_init(){
 
 void ipc_handle(WM *wm){
     int client;
-    char buf[IPC_BUFSIZE];
+    char buf[SOCK_BUFSIZE];
 
     char *tokens[16];
     while((client = accept(wmfd, NULL, NULL)) >= 0){
