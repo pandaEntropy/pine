@@ -79,7 +79,7 @@ For more information about configuration check the examples directory.
 
 * Performance in X window managers is usually bottlenecked by Xlib calls rather than the code itself (this might not be the case for XCB). Thus, optimization using Xlib is only possible to a certain extent.
 
-* Currently, *pine* only features two tiling modes: master stack and monocle. These are achieved splitting the screen into smaller rectangles multiple times.
+* Currently, *pine* only features two tiling modes: master stack and monocle. These are achieved by splitting the screen into smaller rectangles multiple times.
 
 * *pine* supports a subset of the EWMH and ICCCM standards, which is sufficient to run quite a few polybar modules.
 
