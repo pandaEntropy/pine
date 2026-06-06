@@ -8,7 +8,6 @@
 
 #include "pine.h"
 #include "ipc.h"
-#include "config.h"
 
 static int startup_err = 0;
 static int running = 1;
@@ -86,7 +85,7 @@ int main(void)
     init_layouts(&wm);
 
     init_config(&wm);
-    load_config(&wm);
+    exec_config(&wm, NULL);
 
     init_ewmh(&wm);
 

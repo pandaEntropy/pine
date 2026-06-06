@@ -7,7 +7,7 @@
 #include <errno.h>
 
 #include "ipc.h" 
-#include "config.h"
+#include "commands.h"
 
 int wmfd = -1;
 
@@ -52,13 +52,17 @@ void ipc_handle(WM *wm){
         fcntl(client, F_SETFD, FD_CLOEXEC);
 
         ssize_t n = read(client, buf, sizeof(buf) - 1);
+        int status = -1;
         if(n > 0){
             buf[n] = '\0';
             int count = tokenize(buf, tokens);
             if(count > 0){
-                interpret_tokens(wm, tokens, count);
+                 status = interpret_tokens(wm, tokens, count);
             }
         }
+
+        write(client, &status, sizeof(status));
+
         close(client);
     }
 

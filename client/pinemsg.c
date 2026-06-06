@@ -9,7 +9,7 @@
 
 int main(int argc, char **argv){
     if(argc < 2){
-        fprintf(stderr, "pinemsg: Insufficient argument amount\n");
+        fprintf(stderr, "pinemsg: Missing arguments\n");
         return 1;
     }
 
@@ -35,11 +35,12 @@ int main(int argc, char **argv){
             write(fd, " ", 1);
     }
 
-    char buf[BUFSIZE];
-    ssize_t n;
+    int status = -1;
 
-    while((n = read(fd, buf, sizeof(buf))) > 0){
-        printf("%s", buf);
+    if(read(fd, &status, sizeof(status)) == sizeof(status)){
+        if(status != 0){
+            fprintf(stderr, "pinemsg: Command failed to execute\n");
+        }
     }
 
     close(fd);

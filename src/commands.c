@@ -1,11 +1,14 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "pine.h"
 #include "commands.h"
 #include "layout.h"
-#include "config.h"
+
+
+#define MAX_TOK 16
 
 void refresh_state(WM *wm){
     for(Client *c = wm->clients; c; c = c->next){
@@ -134,9 +137,9 @@ void exec_switch_workspace(WM *wm, char **tokens, int count){
 
 //ex: reload_config
 void exec_conf_reload(WM *wm, char **tokens, int count){
-    (void) tokens;
     (void) count;
-    reload_config(wm);
+    exec_config(wm, tokens[1]);
+    refresh_state(wm);
 }
 
 //ex: move_client_ws 3
@@ -197,4 +200,33 @@ Command *find_cmd(WM *wm, char *name){
     }
     level_log(wm, WARN, "Command - %s - not found", name);
     return NULL;
+}
+
+int interpret_tokens(WM *wm, char **tokens, int count){
+    if(count == 0) return 1;
+
+    Command *cmd = find_cmd(wm, tokens[0]);
+    if(!cmd) return 1;
+
+    if(count < cmd->min_args){
+        level_log(wm, WARN, "Missing arguments");
+        return 1;
+    }
+
+    cmd->exec(wm, tokens, count);
+
+    return 0;
+}
+
+int tokenize(char *line, char **tokens){
+    int count = 0;
+
+    char *token = strtok(line, " \t\n\0");
+    while(token && count < MAX_TOK){
+        tokens[count] = token;
+        count++;
+        token = strtok(NULL, " \t\n\0");
+    }
+
+    return count;
 }

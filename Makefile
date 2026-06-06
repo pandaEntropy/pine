@@ -44,7 +44,7 @@ install:
 	
 	install -m 755 pine $(DESTDIR)$(PREFIX)/bin/
 	install -m 755 pinemsg $(DESTDIR)$(PREFIX)/bin/
-	install -m 644 pine.desktop $(DESTDIR)/usr/share/xsessions/
+	install -m 644 examples/pine.desktop $(DESTDIR)/usr/share/xsessions/
 
 uninstall:
 	rm -f $(DESTDIR)$(PREFIX)/bin/pine

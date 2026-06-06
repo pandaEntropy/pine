@@ -191,4 +191,6 @@ void init_ewmh(WM *wm);
 
 void exec_start(WM *wm);
 
+void exec_config(WM *wm, char *path);
+
 #endif

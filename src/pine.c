@@ -1157,7 +1157,7 @@ void init_config(WM *wm){
     wm->config.active_border_color = 0x4488FF;
     wm->config.inactive_border_color = 0x71797E;
     wm->config.border_width = 4;
-    wm->current_log_level = ERROR;
+    wm->current_log_level = WARN;
     wm->config.gap_size = 6;
 
     char buf[PATH_MAX];
@@ -1251,7 +1251,10 @@ void get_config_path(WM *wm, char *buf, size_t maxlen){
     char *home = getenv("HOME");
     if(home && home[0] != '\0'){
         snprintf(buf, maxlen, "%s/.config/pine/pinerc", home);
-        if(access(buf, F_OK) == 0) return;
+        if(access(buf, F_OK) == 0) 
+            return;
+        else
+            buf = NULL;
     }
 
     level_log(wm, WARN, "failed to locate configuration file");
@@ -1280,4 +1283,32 @@ void exec_start(WM *wm){
     }
 
     level_log(wm, WARN, "failed to locate start script");
+}
+
+void exec_config(WM *wm, char *path){
+    char *confpath;
+
+    if(access(path, F_OK) == 0){
+        confpath = path;
+    }
+    else{
+        confpath = wm->config.conf_addr;
+    }
+
+    if(confpath){
+        pid_t pid = fork();
+
+        if(pid == 0){
+            execl(wm->config.conf_addr, "pinerc", NULL);
+            exit(1);
+        }
+
+        if(pid < 0){
+            level_log(wm, WARN, "failed to fork config file");
+        }
+
+        return;
+    }
+
+    level_log(wm, WARN, "failed to locate config file");
 }

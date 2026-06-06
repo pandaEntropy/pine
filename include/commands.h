@@ -13,4 +13,8 @@ Command *find_cmd(WM *wm, char *name);
 
 void refresh_state(WM *wm);
 
+int tokenize(char *line, char **tokens);
+
+int interpret_tokens(WM *wm, char **tokens, int count);
+
 #endif
