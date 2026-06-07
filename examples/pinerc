@@ -1,12 +1,9 @@
-#This is a comment
+#!/bin/sh
 
-#Takes in any valid hex color
-set_active_border_color #355E3B 
-set_inactive_border_color #848884
+pinemsg set_active_border_color \#355E3B 
+pinemsg set_inactive_border_color \#848884
 
-#Takes in integers as parameters. Set zero to disable.
-set_border_width 2
-set_gap_size 6
+pinemsg set_border_width 2
+pinemsg set_gap_size 6
 
-#Takes in a one of four strings {DEBUG, INFO, WARN, ERROR}. Sets the minimum log level filter.
-set_log_level ERROR 
+pinemsg set_log_level ERROR 

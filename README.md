@@ -18,7 +18,7 @@ It does not grab key input. Instead, keyboard input is grabbed by a third party 
 
 *pine* has two configuration files: *pinerc* and *start.sh*
 
-*pinerc*: a basic text configuration file that allows for customization of features like border width or border colors.
+*pinerc*: a shell script containing pinemsg commands.
 
 *start.sh*: a shell script that runs at the start of a session. It should include programs that you want to automatically run on startup.
 
@@ -46,7 +46,7 @@ For more information about configuration check the examples directory.
 
 3. Create the `$XDG_CONFIG_HOME/pine/start.sh` file. 
 
-    A third party program that grabs input (like the sxhkd hotkey daemon) is mandatory, as the window manager does not react to keyboard input. 
+    A third party program that grabs input (like the sxhkd hotkey daemon) is mandatory, as the window manager does not react to keyboard input.
 
     You must start the hotkey daemon as a background process in your *start.sh*. 
 
@@ -54,9 +54,7 @@ For more information about configuration check the examples directory.
 
 4. Create the `$XDG_CONFIG_HOME/pine/pinerc` file.
 
-    This is a very basic text based config file. It is not required to run the window manager.
-
-    For syntax information, check the examples directory.
+    It should contain a set of pinemsg commands. Not mandatory for the window manager to work. it is executed once on launch, and every time config is reloaded.
 
 * Finally, here is a quick example of how to use pinemsg in the sxhkd config:
 
@@ -69,7 +67,7 @@ For more information about configuration check the examples directory.
         pinemsg rotate
     ```
 
-* For the full list of pinemsg commands see the man pages.
+* For more details about pinemsg refer to the man page.
 
 ## Technical Overview
 

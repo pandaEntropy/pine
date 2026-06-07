@@ -1,5 +1,5 @@
 PREFIX ?= /usr/local
-CONFDIR ?= /etc
+MANDIR ?= $(PREFIX)/share/man/man1/
 
 CODEDIRS=src
 INCDIRS=include
@@ -36,20 +36,23 @@ $(MSGOBJ): $(MSGSRC)
 	$(CC) -std=c99 -Wall -Wextra $(CPPFLAGS)  -c -o $@ $<
 
 clean:
-	rm -rf $(PINEOBJ) $(DEPFILES) pine pinemsg $(MSGOBJ)
+	rm -f $(PINEOBJ) $(DEPFILES) pine pinemsg $(MSGOBJ)
 
 install:
 	install -d $(DESTDIR)$(PREFIX)/bin/
 	install -d $(DESTDIR)/usr/share/xsessions/
+	install -d $(DESTDIR)$(PREFIX)/share/man/man1
 	
 	install -m 755 pine $(DESTDIR)$(PREFIX)/bin/
 	install -m 755 pinemsg $(DESTDIR)$(PREFIX)/bin/
-	install -m 644 examples/pine.desktop $(DESTDIR)/usr/share/xsessions/
+	install -m 644 pine.desktop $(DESTDIR)/usr/share/xsessions/
+	install -m 644 pinemsg.1 $(DESTDIR)$(MANDIR)
 
 uninstall:
 	rm -f $(DESTDIR)$(PREFIX)/bin/pine
 	rm -f $(DESTDIR)$(PREFIX)/bin/pinemsg
 	rm -f $(DESTDIR)/usr/share/xsessions/pine.desktop
+	rm -f $(DESTDIR)$(PREFIX)$(MANDIR)pinemsg.1
 
 -include $(DEPFILES)
 

@@ -1,0 +1,79 @@
+.TH pinemsg 1 2026-06-06 GNU
+
+.SH NAME
+pinemsg \- control pine through a set of commands
+
+.SH SYNOPSIS
+.B pinemsg
+[\fBoperation\fR]
+[\fBvalue\fR]
+
+.SH DESCRIPTION
+.ad l
+\fBpinemsg\fR is a client program which sends instructions to pine through a dedicated socket. It exits after writing and reading once from the socket, and can handle every feature pine has to offer.
+
+.SH OPERATIONS
+.TP
+.B set_active_border_color\ \fR[\fBcolor\fR]
+Set the active window border color.
+.TP
+.B set_inactive_border_color\ \fR[\fBcolor\fR]
+Set the inactive window border color.
+.TP
+.B set_border_width\ \fR[\fBnum\fR]
+Set the window border width.
+.TP
+.B focus\ \fR[\fBdirection\fR]
+Give focus to the window in the specified direction.
+.TP
+.B rotate
+.br
+Rotate windows when in master stack layout.
+.TP
+.B hide_all
+Hide all windows in the active workspaces.
+.TP
+.B kill_window
+Kill the focused window.
+.TP
+.B resize\ \fR[\fBdirection\fR]
+Resize window in a specified direction when in master stack layout.
+.TP
+.B set_master
+Make the current focused window the master.
+.TP
+.B cycle_layout
+Cycle the current layout.
+.TP
+.B switch_workspace\ \fR[\fBdirection\fR]
+Move one workspace in the specified direction.
+.TP
+.B reload_config
+Execute the configuration script.
+.TP
+.B move_client_ws\ \fR[\fBindex\fR]
+Move the focused window to the workspace specified by the given index.
+.TP
+.B set_log_level\ \fR[\fBlevel\fR]
+Set the minimum log level at which events will be logged.
+.TP
+.B set_gap_size\ \fR[\fBnum\fR]
+Set the gap size between windows.
+
+.SH VALUES
+.TP
+.B [\fBcolor\fR]
+A color specified by its hex code.
+.TP
+.B [\fBnum\fR]
+.br
+An unsigned integer.
+.TP
+.B [\fBdirection\fR]
+Could be up, right, down or left. Passed as strings.
+.TP
+.B [\fBindex\fR]
+A zero\-based index.
+.TP
+.B [\fBlevel\fR]
+Could be DEBUG, INFO, WARN or ERROR. Passed as strings.
