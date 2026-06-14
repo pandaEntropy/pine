@@ -10,6 +10,7 @@
 #include <X11/Xatom.h>
 #include <time.h>
 #include <stdarg.h>
+#include <sys/wait.h>
 
 #include "pine.h"
 #include "layout.h"
@@ -1278,6 +1279,8 @@ void exec_start(WM *wm){
                 level_log(wm, WARN, "failed to fork start script");
             }
 
+            waitpid(pid, NULL, 0);
+
             return;
         }
     }
@@ -1299,12 +1302,16 @@ void exec_config(WM *wm, char *path){
         pid_t pid = fork();
 
         if(pid == 0){
-            execl(wm->config.conf_addr, "pinerc", NULL);
-            exit(1);
+            if(fork() == 0){ //double fork ensures that the child gets reaped eventually
+                execl(confpath, "pinerc", NULL);
+                exit(1);
+            }
+            exit(0);
         }
 
         if(pid < 0){
             level_log(wm, WARN, "failed to fork config file");
+            return;
         }
 
         return;
